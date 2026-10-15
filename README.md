@@ -29,6 +29,14 @@ look at where each method wins and loses.
 5. on raspberry pis talking over real wifi
 6. jamming experiments (`tc netem`) + write-up
 
+## what one engagement looks like
+
+![engagement](docs/figures/engagement_example.png)
+
+one scenario from `suite_small_v1` run w the greedy-nearest baseline. gray = threats that got stopped,
+red = got through, blue = interceptors, x = kill, dashed circles = each site's range. made by
+`scripts/render_engagement.py` (`make figures`). how the sim works: [docs/SIM.md](docs/SIM.md).
+
 ## setup
 
 ```
@@ -36,6 +44,7 @@ brew install uv   # or see astral.sh/uv
 make setup
 make test
 make lint
+make figures   # rebuilds every figure in this readme
 ```
 
 ## abstraction note
