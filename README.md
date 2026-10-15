@@ -1,5 +1,7 @@
 # salvo
 
+[![ci](https://github.com/j0hanj/salvo/actions/workflows/ci.yml/badge.svg)](https://github.com/j0hanj/salvo/actions/workflows/ci.yml)
+
 who shoots what, when a swarm of cheap drones shows up at once and the radios are getting jammed.
 
 salvo is a weapon-target assignment (WTA) testbed. it's a vectorized 2D engagement sim, exact MILP and
