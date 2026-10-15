@@ -54,7 +54,9 @@ as moving in a straight line during the tick and finds the closest they got (`cl
 every scenario gets its own seed spawned from the suite seed (`np.random.SeedSequence`). that seed
 splits into two streams: one for the layout (where things spawn, when, how fast) and one for the
 `p_kill` dice rolls. kill rolls happen in a fixed order (interceptor slot order). same seed in = byte
-identical run out, tested in `tests/test_engine.py`.
+identical run out on the same machine, tested in `tests/test_engine.py`. across machines (mac vs
+linux) trig/exp can differ in the last bit, so suite hashes round to 1e-6 before hashing. found that
+one when ci went red on the first run.
 
 ## scenario knobs (`sim/scenario.py`)
 
