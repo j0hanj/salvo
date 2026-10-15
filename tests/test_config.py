@@ -30,3 +30,13 @@ def test_roundtrip(tmp_path):
     cfg = Outer("z", Inner(3))
     dump(cfg, tmp_path / "c.yaml")
     assert load(Outer, tmp_path / "c.yaml") == cfg
+
+
+@dataclass
+class HasList:
+    items: list[Inner] = field(default_factory=list)
+
+
+def test_list_of_dataclasses():
+    cfg = from_dict(HasList, {"items": [{"a": 1}, {"a": 2}]})
+    assert cfg.items == [Inner(1), Inner(2)]

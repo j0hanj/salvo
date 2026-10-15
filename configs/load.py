@@ -17,10 +17,18 @@ def from_dict(cls, data: dict):
         raise KeyError(f"unknown keys for {cls.__name__}: {sorted(unknown)}")
     kwargs = {}
     for name, value in data.items():
-        t = hints[name]
-        # recurse into nested dataclasses, everything else passes through as-is
-        kwargs[name] = from_dict(t, value) if dataclasses.is_dataclass(t) else value
+        kwargs[name] = _convert(hints[name], value)
     return cls(**kwargs)
+
+
+def _convert(t, value):
+    # recurse into nested dataclasses and list[dataclass], everything else passes through as-is
+    if dataclasses.is_dataclass(t):
+        return from_dict(t, value)
+    args = typing.get_args(t)
+    if typing.get_origin(t) is list and args and dataclasses.is_dataclass(args[0]):
+        return [from_dict(args[0], v) for v in value]
+    return value
 
 
 def load(cls, path: str | Path):
