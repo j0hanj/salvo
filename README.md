@@ -1,41 +1,43 @@
 # salvo
 
-who shoots what, when a bunch of cheap drones show up at once, and the radios are getting jammed.
+decentralized weapon-target assignment for drone swarms, measured on a real jammed network.
 
 ## the problem
 
-shooting million-dollar interceptors at drones that cost a few thousand doesn't scale. so you need to pick which defender goes after
-which incoming threat (the weapon-target assignment problem, WTA), fast, cost-aware, and keep re-planning
-as things change. on top of that, jamming kills the radio links, so anything that needs a central computer
-or a perfect network falls apart.
+cheap drones flip the cost math on air defense: the interceptor costs orders of magnitude more than
+the thing it's shooting down. so the hard part is assignment. which defender takes which threat
+(weapon-target assignment, WTA), done fast, aware of cost, and re-planned constantly as the fight
+changes. and when the radios are being jammed, anything that leans on a central computer or a clean
+network stops working.
 
-**question:** can a learned, decentralized assignment policy (a graph neural net where each defender is its
-own computer and messages are real network packets) keep stopping threats while the network is dropping
-packets, and beat the standard decentralized method (CBBA, an auction algorithm)?
+salvo asks: can a learned, decentralized policy hold up under that? each defender runs its own copy
+of a graph neural net on its own computer, and they coordinate by sending real packets over a lossy
+network. it goes up against CBBA (the standard auction-based approach), exact optimization, and
+greedy baselines, all on the exact same scenarios.
 
-**main metric:** % of threats stopped vs % of messages lost, every method on the exact same scenarios.
+**main metric:** % of threats stopped vs % of messages lost.
 
-not claiming a new invention. CBBA, GNNs for multi-robot coordination, and learned WTA solvers all exist.
-the point is a careful, reproducible measurement on a real lossy network on cheap hardware, and an honest
-look at where each method wins and loses.
+the building blocks (CBBA, GNNs for multi-robot coordination, learned WTA solvers) come from prior
+work. what salvo adds is the measurement: a reproducible head-to-head on real hardware and a real
+lossy network, including where the learned policy loses.
 
-## plan
+## roadmap
 
 0. repo + tooling
 1. 2D simulator + scenario generator
-2. baselines (greedy, hungarian, exact MILP, CBBA) + eval harness
-3. GNN trained to copy the exact solver on small fights, tested on way bigger ones
-4. decentralized version in sim, w simulated packet loss
-5. on raspberry pis talking over real wifi
+2. baselines (greedy, hungarian, exact MILP) + eval harness
+3. GNN trained to imitate the exact solver on small fights, tested on much bigger ones
+4. decentralized version in sim (CBBA vs GNN) under simulated packet loss
+5. raspberry pi nodes running inference in C++, talking over wifi
 6. jamming experiments (`tc netem`) + write-up
 
-## what one engagement looks like
+## one engagement
 
 ![engagement](docs/figures/engagement_example.png)
 
-one scenario from `suite_small_v1` run w the greedy-nearest baseline. gray = threats that got stopped,
-red = got through, blue = interceptors, x = kill, dashed circles = each site's range. made by
-`scripts/render_engagement.py` (`make figures`). how the sim works: [docs/SIM.md](docs/SIM.md).
+one scenario from `suite_small_v1` with the greedy-nearest baseline. gray = stopped, red = got
+through, blue = interceptors, x = kill, dashed circles = each site's range. made by
+`scripts/render_engagement.py` (`make figures`). sim details: [docs/SIM.md](docs/SIM.md).
 
 ## setup
 
@@ -47,8 +49,8 @@ make lint
 make figures   # rebuilds every figure in this readme
 ```
 
-## abstraction note
+## scope
 
-everything here is generic. threats and defenders are just points w made-up range / speed / kill-probability
-numbers. no real weapon systems, no real specs, nothing export-controlled. "intercept" means two points got
-close enough. this is a resource-allocation study, not a weapons project.
+everything is abstract. threats and defenders are points with made-up range, speed, and
+kill-probability numbers. no real systems, no real specs, nothing export-controlled. an "intercept"
+is two points getting close enough. it's a resource-allocation problem at heart.
