@@ -53,10 +53,13 @@ def suite_hash(suite: Suite) -> str:
     h.update(yaml.safe_dump(dataclasses.asdict(suite.cfg), sort_keys=True).encode())
     for sc in suite.scenarios:
         for f in dataclasses.fields(sc):
-            # fixed dtypes so the hash doesn't depend on platform default int size
+            # fixed dtypes so the hash doesn't depend on platform default int size. floats get
+            # rounded first: sin/cos/exp can differ in the last bit between mac and linux math
+            # libs, which is noise, not a different suite
             v = np.asarray(getattr(sc, f.name))
-            v = v.astype(np.float64 if v.dtype.kind == "f" else np.int64)
-            h.update(v.tobytes())
+            if v.dtype.kind == "f":
+                v = np.round(v.astype(np.float64), 6) + 0.0  # + 0.0 turns -0.0 into 0.0
+            h.update(v.astype(np.float64 if v.dtype.kind == "f" else np.int64).tobytes())
     return h.hexdigest()
 
 
