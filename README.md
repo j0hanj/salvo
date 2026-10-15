@@ -1,4 +1,4 @@
-# swarm-wta
+# salvo
 
 who shoots what, when a bunch of cheap drones show up at once, and the radios are getting jammed.
 
