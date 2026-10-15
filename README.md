@@ -4,7 +4,7 @@ who shoots what, when a bunch of cheap drones show up at once, and the radios ar
 
 ## the problem
 
-shooting a $2M interceptor at a $5k drone doesn't scale. so you need to decide which defender goes after
+shooting million-dollar interceptors at drones that cost a few thousand doesn't scale. so you need to pick which defender goes after
 which incoming threat (the weapon-target assignment problem, WTA), fast, cost-aware, and keep re-planning
 as things change. on top of that, jamming kills the radio links, so anything that needs a central computer
 or a perfect network falls apart.
