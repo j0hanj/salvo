@@ -1,4 +1,4 @@
-.PHONY: setup test lint fmt figures
+.PHONY: setup test lint fmt suites figures
 
 setup:
 	uv sync
@@ -14,6 +14,10 @@ fmt:
 	uv run ruff check --fix .
 	uv run ruff format .
 
-# regenerates every figure/table in the readme. empty until phase 1 has something to plot
-figures:
-	@echo "no figures yet"
+# verify every eval suite still expands to exactly what its .lock says
+suites:
+	uv run python -m scripts.build_suites
+
+# regenerates every figure/table in the readme from scratch
+figures: suites
+	uv run python -m scripts.render_engagement
