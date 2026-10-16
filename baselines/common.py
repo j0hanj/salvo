@@ -24,3 +24,10 @@ def p_kill(obs: Obs) -> np.ndarray:
 def cost(obs: Obs) -> np.ndarray:
     """(m,) cost per shot per effector."""
     return np.array([obs.types[k].cost for k in obs.eff_type], dtype=float)
+
+
+def shot_value(obs: Obs, cost_weight: float = 0.0) -> np.ndarray:
+    """(m, n) expected value of one shot from e at j: threat value x kill chance, minus a cost
+    penalty. -inf where the shot isn't legal. cost_weight=0 means ignore cost entirely."""
+    v = obs.threat_value[None] * p_kill(obs)[:, None] - cost_weight * cost(obs)[:, None]
+    return np.where(feasible(obs), v, -np.inf)

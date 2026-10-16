@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from baselines.common import feasible
+from baselines.common import feasible, shot_value
 from sim.engine import Obs
 
 
@@ -18,4 +18,24 @@ def nearest(obs: Obs) -> list[tuple[int, int]]:
             j = int(cand[np.argmin(to_asset[cand])])
             pairs.append((int(e), j))
             ok[:, j] = False
+    return pairs
+
+
+def value(obs: Obs, cost_weight: float = 0.0) -> list[tuple[int, int]]:
+    """take the single best (effector, threat) shot by expected value, lock both out, repeat.
+    the classic greedy WTA heuristic, myopic: it never trades a good shot now for a better
+    combined plan. shots worth <= 0 after the cost penalty don't get taken."""
+    v = shot_value(obs, cost_weight)
+    used_e, used_j = set(), set()
+    pairs = []
+    # stable sort so ties break the same way every run
+    for flat in np.argsort(-v, axis=None, kind="stable"):
+        e, j = (int(i) for i in np.unravel_index(flat, v.shape))
+        if not v[e, j] > 0:
+            break
+        if e in used_e or j in used_j:
+            continue
+        used_e.add(e)
+        used_j.add(j)
+        pairs.append((e, j))
     return pairs
