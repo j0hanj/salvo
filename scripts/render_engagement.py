@@ -5,13 +5,14 @@ uv run python -m scripts.render_engagement --suite suite_small_v1 --index 3
 
 import argparse
 
-from baselines.greedy import nearest
+from baselines.greedy import nearest, value
+from baselines.hungarian import hungarian
 from eval.suites import load_suite
 from sim.engine import run
 from viz.engagement import draw, headline
 from viz.style import save_both
 
-POLICIES = {"greedy-nearest": nearest}
+POLICIES = {"greedy-nearest": nearest, "greedy-value": value, "hungarian": hungarian}
 
 
 def main():
