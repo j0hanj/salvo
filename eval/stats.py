@@ -26,3 +26,15 @@ def paired_diff(a, b, **kw):
     if a.shape != b.shape:
         raise ValueError("paired diff needs the same scenarios in the same order")
     return bootstrap_ci(a - b, **kw)
+
+
+def ratio_ci(num, den, n_boot: int = 10_000, alpha: float = 0.05, seed: int = 0):
+    """(ratio, lo, hi) of sum(num) / sum(den), resampling scenarios. for stuff like cost per kill,
+    where averaging per-scenario ratios would blow up on scenarios w ~0 kills."""
+    num, den = np.asarray(num, dtype=float), np.asarray(den, dtype=float)
+    rng = np.random.default_rng(seed)
+    idx = rng.integers(0, len(num), (n_boot, len(num)))
+    with np.errstate(divide="ignore", invalid="ignore"):
+        boots = num[idx].sum(1) / den[idx].sum(1)
+    lo, hi = np.nanquantile(boots, [alpha / 2, 1 - alpha / 2])
+    return float(num.sum() / den.sum()), float(lo), float(hi)

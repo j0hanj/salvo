@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from eval.stats import bootstrap_ci, paired_diff
+from eval.stats import bootstrap_ci, paired_diff, ratio_ci
 
 
 def test_ci_covers_true_mean_most_of_the_time():
@@ -35,3 +35,10 @@ def test_nan_dropped_and_seeded():
 def test_misaligned_pair_fails():
     with pytest.raises(ValueError):
         paired_diff([1, 2], [1, 2, 3])
+
+
+def test_ratio_ci():
+    num = np.array([10.0, 20.0, 30.0, 0.0])
+    den = np.array([1.0, 2.0, 3.0, 0.0])  # a scenario w zero kills doesn't break it
+    r, lo, hi = ratio_ci(num, den)
+    assert r == 10.0 and lo <= r <= hi
