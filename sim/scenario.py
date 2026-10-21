@@ -12,8 +12,11 @@ class GenConfig:
     n_threats: list[int] = field(default_factory=lambda: [5, 10])  # [lo, hi] inclusive
     n_effectors: list[int] = field(default_factory=lambda: [3, 5])
     type_mix: dict[str, float] = field(default_factory=lambda: {"short": 0.7, "long": 0.3})
-    # "spread": launches uniform over the window. "waves": bunched into n_waves groups, which is
-    # what actually stresses an assigner since everything shows up at once
+    # "spread": launches uniform over the window.
+    # "waves": launch times bunched into n_waves groups. threats start at different ranges and
+    #   speeds though, so they still arrive spread out. kept so suite_small_v1 expands the same.
+    # "impact_waves": *arrival* times at the asset bunched into n_waves groups, launch is
+    #   backed out from range / speed. this is what actually saturates the defense.
     arrival: str = "spread"
     window: float = 60.0  # s
     n_waves: int = 3
@@ -43,6 +46,10 @@ def generate(cfg: GenConfig, type_names: list[str], seed) -> Scenario:
 
     if cfg.arrival == "spread":
         launch = rng.uniform(0, cfg.window, n)
+    elif cfg.arrival == "impact_waves":
+        centers = rng.uniform(0, cfg.window, cfg.n_waves)
+        impact = centers[rng.integers(0, cfg.n_waves, n)] + rng.normal(0, cfg.wave_jitter, n)
+        launch = None  # needs speed, which gets drawn below
     elif cfg.arrival == "waves":
         centers = rng.uniform(0, cfg.window, cfg.n_waves)
         launch = centers[rng.integers(0, cfg.n_waves, n)] + rng.normal(0, cfg.wave_jitter, n)
@@ -69,10 +76,15 @@ def generate(cfg: GenConfig, type_names: list[str], seed) -> Scenario:
     rad = rng.uniform(*cfg.defense_radius, m)
     eff_pos = rad[:, None] * np.stack([np.cos(ang), np.sin(ang)], 1)
 
+    speed = rng.uniform(*cfg.threat_speed, n)
+    if launch is None:
+        launch = impact - r / speed  # time to fly r meters at that speed
+        launch -= min(launch.min(), 0.0)  # shift the whole raid so nobody launches before t=0
+
     return Scenario(
         threat_start=start,
         threat_launch=launch,
-        threat_speed=rng.uniform(*cfg.threat_speed, n),
+        threat_speed=speed,
         threat_value=value,
         eff_pos=eff_pos,
         eff_type=eff_type,
