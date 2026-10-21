@@ -37,7 +37,7 @@ scenario suites, reported w confidence intervals.
 
 - [x] 0. repo + tooling
 - [x] 1. sim, scenario generator, versioned eval suites
-- [ ] 2. baselines + eval harness
+- [x] 2. baselines + eval harness
 - [ ] 3. learned centralized policy + scaling study
 - [ ] 4. decentralized in sim: CBBA vs GNN under simulated loss
 - [ ] 5. raspberry pi deployment
@@ -51,6 +51,29 @@ scenario suites, reported w confidence intervals.
 </picture>
 
 made by `scripts/render_engagement.py` (`make figures`). sim details in [docs/SIM.md](docs/SIM.md).
+
+## baselines (phase 2)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/compare_suite_small_v2_dark.png">
+  <img alt="baseline comparison on suite_small_v2" src="docs/figures/compare_suite_small_v2_light.png">
+</picture>
+
+<!-- compare:suite_small_v2 -->
+| method | threats stopped % | value defended % | Δ stopped vs milp | Δ value vs milp | cost per threat stopped | decision latency ms |
+|---|---|---|---|---|---|---|
+| greedy-nearest | 79.2 [76.5, 81.8] | 79.3 [76.1, 82.5] | -0.9 [-2.1, 0.4] | -8.1 [-10.6, -5.7] | 10.2 [9.0, 11.3] | 0.015 [0.015, 0.015] |
+| greedy-value | 80.2 [77.7, 82.6] | 86.8 [84.3, 89.0] | 0.2 [-0.4, 0.8] | -0.6 [-1.5, 0.2] | 9.8 [8.7, 10.9] | 0.019 [0.019, 0.021] |
+| hungarian | 80.6 [78.2, 83.1] | 87.1 [84.6, 89.4] | 0.6 [0.0, 1.3] | -0.3 [-1.4, 0.7] | 9.7 [8.7, 10.8] | 0.024 [0.022, 0.025] |
+| milp | 80.0 [77.6, 82.4] | 87.4 [85.1, 89.5] | — | — | 10.0 [8.9, 11.1] | 2.627 [2.564, 2.692] |
+
+`suite_small_v2`, 200 scenarios, every method on the same ones. means w 95% bootstrap cis over scenarios. Δs are paired per scenario, in pct points. latency = mean wall time of ticks that had a real decision. made by `scripts/compare.py` at `69675f4`.
+<!-- /compare:suite_small_v2 -->
+
+what this says so far: under saturation everyone stops about the same number of threats, but picking
+*which* ones matters. nearest-first defends way less value than anything that looks at threat value.
+exact per-tick MILP doesn't beat hungarian, because it's optimal per snapshot, not over the whole
+raid (see [docs/FORMULATION.md](docs/FORMULATION.md)). that gap is the opening for a learned policy.
 
 ## setup
 

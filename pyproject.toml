@@ -5,6 +5,7 @@ requires-python = ">=3.11"
 dependencies = [
     "matplotlib>=3.11.2",
     "numpy>=2.4.6",
+    "ortools>=9.15.6755",
     "pyyaml>=6.0.3",
     "scipy>=1.17.1",
 ]
@@ -28,3 +29,5 @@ select = ["E", "F", "W", "I", "B", "UP", "NPY"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+# ortools' swig bindings trip a python deprecation warning on import, not ours
+filterwarnings = ["ignore:builtin type .* has no __module__ attribute:DeprecationWarning"]

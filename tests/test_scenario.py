@@ -47,3 +47,15 @@ def test_type_mix():
 def test_bad_knob_fails_loud():
     with pytest.raises(ValueError):
         generate(GenConfig(arrival="nope"), NAMES, 0)
+
+
+def test_impact_waves_arrive_together():
+    cfg = GenConfig(n_threats=[100, 100], arrival="impact_waves", n_waves=1, wave_jitter=2.0)
+    sc = generate(cfg, NAMES, 0)
+    arrive = sc.threat_launch + np.linalg.norm(sc.threat_start, axis=1) / sc.threat_speed
+    assert arrive.std() < 3.0
+    assert sc.threat_launch.min() >= 0
+    # same knobs w launch-time waves: arrivals smear out a lot more
+    lw = generate(GenConfig(n_threats=[100, 100], arrival="waves", n_waves=1), NAMES, 0)
+    arrive_lw = lw.threat_launch + np.linalg.norm(lw.threat_start, axis=1) / lw.threat_speed
+    assert arrive_lw.std() > 5 * arrive.std()

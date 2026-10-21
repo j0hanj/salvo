@@ -17,7 +17,9 @@ def git_state() -> tuple[str, bool]:
     def run(*args):
         return subprocess.run(["git", *args], capture_output=True, text=True, check=True).stdout
 
-    return run("rev-parse", "HEAD").strip(), bool(run("status", "--porcelain").strip())
+    # untracked files (fresh figures, tables) don't change what code ran, so they don't count
+    dirty = run("status", "--porcelain", "--untracked-files=no").strip()
+    return run("rev-parse", "HEAD").strip(), bool(dirty)
 
 
 def start_run(name: str, cfg, seed: int, root: Path = RESULTS) -> Path:
