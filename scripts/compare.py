@@ -83,6 +83,18 @@ def table(summary: list[dict], cfg: CompareConfig, n: int, commit: str) -> str:
     return "\n".join(lines) + "\n"
 
 
+def splice_readme(suite: str, md: str, path="README.md") -> None:
+    """swap the generated table into the readme between its markers, so readme numbers can only
+    come from this script."""
+    start, end = f"<!-- compare:{suite} -->", f"<!-- /compare:{suite} -->"
+    text = Path(path).read_text()
+    if start not in text:
+        return
+    head, rest = text.split(start, 1)
+    _, tail = rest.split(end, 1)
+    Path(path).write_text(f"{head}{start}\n{md}{end}{tail}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--suite", default="suite_small_v2")
@@ -107,6 +119,7 @@ def main():
         Path("docs/tables").mkdir(parents=True, exist_ok=True)
         Path(f"docs/tables/compare_{cfg.suite}.md").write_text(md)
         save_both(lambda th: draw(summary, cfg, n, th), f"docs/figures/compare_{cfg.suite}")
+        splice_readme(cfg.suite, md)
     print(md)
     print(f"run logged to {out}")
 
