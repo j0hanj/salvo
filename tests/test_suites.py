@@ -5,8 +5,9 @@ import pytest
 from eval.suites import build, load_suite, suite_hash
 
 
-def test_suite_small_matches_lock():
-    suite = load_suite("suite_small_v1")  # raises if the hash drifted
+@pytest.mark.parametrize("suite_id", ["suite_small_v1", "suite_small_v2"])
+def test_suites_match_lock(suite_id):
+    suite = load_suite(suite_id)  # raises if the hash drifted
     assert len(suite.scenarios) == suite.cfg.n_scenarios
 
 
