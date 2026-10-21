@@ -1,6 +1,6 @@
 """render one engagement from a suite as a png (light + dark).
 
-uv run python -m scripts.render_engagement --suite suite_small_v2 --index 3
+uv run python -m scripts.render_engagement --suite suite_small_v2 --index 11
 """
 
 import argparse
@@ -18,7 +18,7 @@ POLICIES = {"greedy-nearest": nearest, "greedy-value": value, "hungarian": hunga
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--suite", default="suite_small_v2")
-    ap.add_argument("--index", type=int, default=3)
+    ap.add_argument("--index", type=int, default=11)
     ap.add_argument("--policy", default="greedy-nearest", choices=POLICIES)
     ap.add_argument("--out", default="docs/figures/engagement_example")
     args = ap.parse_args()
