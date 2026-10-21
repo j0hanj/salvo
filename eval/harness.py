@@ -11,6 +11,7 @@ from multiprocessing import Pool
 
 import numpy as np
 
+from baselines.common import feasible
 from baselines.greedy import nearest, value
 from baselines.hungarian import hungarian
 from baselines.milp import milp
@@ -26,16 +27,22 @@ METHODS = {
 
 
 class Timed:
-    """wraps a policy and clocks every call. wall time, so it includes python overhead."""
+    """wraps a policy and clocks it. wall time, so it includes python overhead.
+
+    only ticks w at least one legal shot count. most ticks have nothing to decide and return in
+    microseconds, which would drown out the calls that actually matter.
+    """
 
     def __init__(self, policy):
         self.policy = policy
         self.ms = []
 
     def __call__(self, obs):
+        live = feasible(obs).any()  # checked outside the timer
         t0 = time.perf_counter()
         out = self.policy(obs)
-        self.ms.append((time.perf_counter() - t0) * 1e3)
+        if live:
+            self.ms.append((time.perf_counter() - t0) * 1e3)
         return out
 
 
@@ -62,9 +69,9 @@ def run_one(suite, idx: int, method: str) -> dict:
         "cost": res.cost,
         "cost_per_stop": res.cost / n_stop if n_stop else float("nan"),
         "decisions": len(ms),
-        "lat_mean_ms": float(ms.mean()),
-        "lat_p95_ms": float(np.percentile(ms, 95)),
-        "lat_max_ms": float(ms.max()),
+        "lat_mean_ms": float(ms.mean()) if len(ms) else float("nan"),
+        "lat_p95_ms": float(np.percentile(ms, 95)) if len(ms) else float("nan"),
+        "lat_max_ms": float(ms.max()) if len(ms) else float("nan"),
     }
 
 
