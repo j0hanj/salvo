@@ -39,6 +39,13 @@ def check_legal(pairs, m, n):
     assert all(0 <= e < m and 0 <= j < n for e, j in pairs)
 
 
+def check_shooters(pairs, ok):
+    """milp is allowed to stack shooters on a threat, so only check effectors + legality."""
+    es = [e for e, _ in pairs]
+    assert len(set(es)) == len(es)
+    assert all(ok[e, j] for e, j in pairs)
+
+
 def test_nearest_picks_closest_to_asset():
     o = obs([[0, 3000], [0, 1000]], [1, 1], [[0, 0]], [0], [kind("a", 0.5)])
     assert nearest(o) == [(0, 1)]
