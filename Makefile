@@ -1,4 +1,4 @@
-.PHONY: setup test lint fmt suites figures
+.PHONY: setup test lint fmt suites compare figures
 
 setup:
 	uv sync
@@ -18,6 +18,10 @@ fmt:
 suites:
 	uv run python -m scripts.build_suites
 
+# every baseline on the same suite: logged run + readme table + figure
+compare:
+	uv run python -m scripts.compare
+
 # regenerates every figure/table in the readme from scratch
-figures: suites
+figures: suites compare
 	uv run python -m scripts.render_engagement
