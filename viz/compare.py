@@ -38,27 +38,25 @@ def _panel(ax, theme, names, cis, ref_idx, xlabel, digits):
 
 def draw(summary, cfg, n, theme):
     plt.rcParams.update({"font.family": "sans-serif", "font.sans-serif": FONT})
-    fig, (a, b) = plt.subplots(1, 2, figsize=(10, 3.6), sharey=True, facecolor=theme["surface"])
+    fig, axes = plt.subplots(1, 3, figsize=(13, 3.6), sharey=True, facecolor=theme["surface"])
     names = [s["method"] for s in summary]
     ref = names.index(cfg.reference)
-    _panel(a, theme, names, [s["stopped"] for s in summary], ref, "threats stopped (%)", 1)
-    _panel(
-        b,
-        theme,
-        names,
-        [s["cost_per_stop"] for s in summary],
-        ref,
-        "cost per threat stopped (lower is better)",
-        1,
-    )
+    panels = [
+        ("value", "threat value defended (%)"),
+        ("stopped", "threats stopped (%)"),
+        ("cost_per_stop", "cost per threat stopped (lower is better)"),
+    ]
+    for ax, (key, label) in zip(axes, panels, strict=True):
+        _panel(ax, theme, names, [s[key] for s in summary], ref, label, 1)
 
-    best = max(summary, key=lambda s: s["stopped"][0])
-    worst = min(summary, key=lambda s: s["stopped"][0])
+    # headline on value defended: that's where the methods actually separate
+    best = max(summary, key=lambda s: s["value"][0])
+    worst = min(summary, key=lambda s: s["value"][0])
     fig.text(
         0.0,
         1.06,
-        f"{best['method']} stops {best['stopped'][0]:.0f}% of threats, "
-        f"{worst['method']} {worst['stopped'][0]:.0f}%",
+        f"{best['method']} defends {best['value'][0]:.0f}% of threat value, "
+        f"{worst['method']} {worst['value'][0]:.0f}%",
         fontsize=14,
         fontweight="bold",
         color=theme["ink"],
