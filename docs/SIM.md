@@ -64,7 +64,7 @@ one when ci went red on the first run.
 |---|---|
 | `n_threats`, `n_effectors` | [lo, hi], picked uniformly per scenario |
 | `type_mix` | fraction of sites of each type |
-| `arrival` | `spread` = launches uniform over the window. `waves` = bunched into `n_waves` groups, everything shows up at once, harder |
+| `arrival` | `spread` = launches uniform over the window. `waves` = launch times bunched (but threats still arrive spread out, see below). `impact_waves` = arrival times bunched into `n_waves` groups, launch backed out from range / speed. this is the one that saturates the defense |
 | `value` | `uniform` = all worth 1. `lognormal` = a few threats matter way more, so who you shoot first matters |
 | `sector_deg` | threats come from inside this arc (120 deg default) |
 | `threat_speed`, `spawn_radius`, `defense_radius` | geometry |
@@ -76,10 +76,14 @@ to it holds a hash of the config + every scenario array. `make suites` rebuilds 
 `load_suite` refuses to run on a suite that doesn't match its lock. changing a suite means making a v2,
 never editing v1, so old results always point at the exact scenarios they ran on.
 
-`suite_small_v1`: 200 scenarios, 5-10 threats, 2-3 sites, waves, lognormal values. small enough that
-the exact solver (phase 2) is still fast. ammo is deliberately tight. the first draft had deep
-magazines and greedy stopped every threat in a quick sanity check, which makes every method look the
-same.
+`suite_small_v1`: 200 scenarios, 5-10 threats, 2-3 sites, launch-time waves, lognormal values. ammo
+is deliberately tight (deep magazines let greedy stop everything). turned out to be broken as a
+benchmark: threats launched together but arrived one at a time, so in 40 scenarios only 37 of 254
+decision ticks had more than one legal shot, and every method made the same calls.
+
+`suite_small_v2` (the one to use): same size, but arrival-time waves plus time pressure (threats at
+150-250 m/s, slower reloads). sites can't engage everything in a wave, so who gets shot matters.
+small enough that the exact MILP still solves in a few ms per tick.
 
 ## known simplifications (things someone will ask about)
 
