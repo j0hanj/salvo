@@ -78,11 +78,13 @@ never editing v1, so old results always point at the exact scenarios they ran on
 
 `suite_small_v1`: 200 scenarios, 5-10 threats, 2-3 sites, launch-time waves, lognormal values. ammo
 is deliberately tight (deep magazines let greedy stop everything). turned out to be broken as a
-benchmark: threats launched together but arrived one at a time, so in 40 scenarios only 37 of 254
-decision ticks had more than one legal shot, and every method made the same calls.
+benchmark: threats launched together but arrived one at a time, so in the first 40 scenarios only 37
+of 254 decision ticks had more than one legal shot, and the baselines disagreed on 9
+(`scripts/decision_stats.py --suite suite_small_v1 --limit 40`).
 
 `suite_small_v2` (the one to use): same size, but arrival-time waves plus time pressure (threats at
-150-250 m/s, slower reloads). sites can't engage everything in a wave, so who gets shot matters.
+150-250 m/s, slower reloads). sites can't engage everything in a wave, so who gets shot matters:
+152 of 331 ticks w more than one legal shot, baselines disagree on 91 (same script, first 40).
 small enough that the exact MILP still solves in a few ms per tick.
 
 ## known simplifications (things someone will ask about)

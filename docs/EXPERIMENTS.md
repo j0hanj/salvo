@@ -23,8 +23,9 @@ next: phase 2, baselines + eval harness on suite_small_v1.
 
 ## 2026-10-21: suite_small_v1 doesn't separate methods
 ran: greedy-nearest, greedy-value, hungarian on v1 (quick checks, first 20-40 scenarios).
-result: identical stopped / value / cost for all three. counted decision ticks: 37 of 254 had more
-than one legal shot, methods disagreed on 9. root cause: the generator bunched launch times, not
+result: identical stopped / value / cost for all three. `scripts/decision_stats.py --suite
+suite_small_v1 --limit 40`: 37 of 254 decision ticks had more than one legal shot, baselines
+disagreed on 9. same script on v2: 152 of 331, disagree on 91. root cause: the generator bunched launch times, not
 arrival times, so threats reached the defense one at a time. added `impact_waves`, then a quick
 sweep of threat speed / reload / magazine on 40 scenarios to find a regime where the methods diverge.
 locked that as suite_small_v2. v1 kept as-is.
