@@ -5,6 +5,7 @@ methods can be compared pairwise.
 """
 
 import csv
+import functools
 import os
 import time
 from multiprocessing import Pool
@@ -24,6 +25,24 @@ METHODS = {
     "hungarian": hungarian,
     "milp": milp,
 }
+
+
+@functools.cache
+def resolve(method: str):
+    """baseline name, or "gnn:<path to model.pt>" for a trained policy."""
+    if method.startswith("gnn:"):
+        # imported here so the baselines don't need torch
+        import torch
+
+        from learned.model import EdgeScorer
+        from learned.policy import GNNPolicy
+
+        ckpt = torch.load(method[4:], weights_only=True)
+        cfg = ckpt["config"]
+        model = EdgeScorer(cfg["hidden"], cfg["rounds"])
+        model.load_state_dict(ckpt["state_dict"])
+        return GNNPolicy(model)
+    return METHODS[method]
 
 
 class Timed:
@@ -48,7 +67,7 @@ class Timed:
 
 def run_one(suite, idx: int, method: str) -> dict:
     sc = suite.scenarios[idx]
-    policy = Timed(METHODS[method])
+    policy = Timed(resolve(method))
     res = run(sc, suite.cfg.sim, suite.cfg.types, policy)
     stopped = res.status == KILLED
     n_stop = int(stopped.sum())
