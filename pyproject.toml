@@ -8,6 +8,7 @@ dependencies = [
     "ortools>=9.15.6755",
     "pyyaml>=6.0.3",
     "scipy>=1.17.1",
+    "torch>=2.14.1",
 ]
 
 [dependency-groups]
@@ -31,3 +32,12 @@ testpaths = ["tests"]
 pythonpath = ["."]
 # ortools' swig bindings trip a python deprecation warning on import, not ours
 filterwarnings = ["ignore:builtin type .* has no __module__ attribute:DeprecationWarning"]
+
+# cpu-only torch on linux, otherwise ci pulls gigabytes of cuda it never uses
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
