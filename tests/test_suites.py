@@ -2,10 +2,10 @@ import dataclasses
 
 import pytest
 
-from eval.suites import build, load_suite, suite_hash
+from eval.suites import SUITE_DIR, build, load_suite, suite_hash
 
 
-@pytest.mark.parametrize("suite_id", ["suite_small_v1", "suite_small_v2", "suite_train_v1"])
+@pytest.mark.parametrize("suite_id", sorted(p.stem for p in SUITE_DIR.glob("*.yaml")))
 def test_suites_match_lock(suite_id):
     suite = load_suite(suite_id)  # raises if the hash drifted
     assert len(suite.scenarios) == suite.cfg.n_scenarios
