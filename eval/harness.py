@@ -39,7 +39,8 @@ def resolve(method: str):
 
         ckpt = torch.load(method[4:], weights_only=True)
         cfg = ckpt["config"]
-        model = EdgeScorer(cfg["hidden"], cfg["rounds"])
+        # older checkpoints predate the degree option
+        model = EdgeScorer(cfg["hidden"], cfg["rounds"], cfg.get("degree", False))
         model.load_state_dict(ckpt["state_dict"])
         return GNNPolicy(model)
     return METHODS[method]

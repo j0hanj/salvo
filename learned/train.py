@@ -18,6 +18,7 @@ from learned.model import EdgeScorer
 class TrainConfig:
     hidden: int = 64
     rounds: int = 3
+    degree: bool = False  # see EdgeScorer
     lr: float = 1e-3
     epochs: int = 30
     graphs_per_step: int = 64
@@ -77,7 +78,7 @@ def train(b: Batch, cfg: TrainConfig, log=print):
     torch.manual_seed(cfg.seed)
     rng = np.random.default_rng(cfg.seed)
     tr, va = split(b, cfg.val_frac, cfg.seed)
-    model = EdgeScorer(cfg.hidden, cfg.rounds)
+    model = EdgeScorer(cfg.hidden, cfg.rounds, cfg.degree)
     opt = torch.optim.Adam(model.parameters(), lr=cfg.lr)
     # most legal edges aren't taken, so upweight the positives to balance the classes
     pos = float(
