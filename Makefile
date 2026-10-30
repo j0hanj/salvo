@@ -1,4 +1,4 @@
-.PHONY: setup test lint fmt suites compare figures
+.PHONY: setup test lint fmt suites compare train scaling figures
 
 setup:
 	uv sync
@@ -22,6 +22,14 @@ suites:
 compare:
 	uv run python -m scripts.compare
 
+# imitation learning: bc on milp's episodes + 3 dagger rounds. a few minutes on a laptop cpu
+train:
+	uv run python -m scripts.train
+
+# zero-shot scaling study, uses the newest model in results/
+scaling:
+	uv run python -m scripts.scaling
+
 # regenerates every figure/table in the readme from scratch
-figures: suites compare
+figures: suites compare train scaling
 	uv run python -m scripts.render_engagement

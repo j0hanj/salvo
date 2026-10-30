@@ -30,3 +30,15 @@ def test_csv_roundtrip(tmp_path):
     assert back[1]["stopped"] == rows[1]["stopped"]
     assert back[0]["method"] == "greedy-nearest"
     assert math.isclose(back[2]["cost"], rows[2]["cost"])
+
+
+def test_gnn_checkpoint_loads_and_runs(tmp_path):
+    import torch
+
+    from learned.model import EdgeScorer
+
+    model = EdgeScorer(hidden=8, rounds=1)
+    path = tmp_path / "m.pt"
+    torch.save({"state_dict": model.state_dict(), "config": {"hidden": 8, "rounds": 1}}, path)
+    r = run_one(load_suite("suite_small_v2"), 0, f"gnn:{path}")
+    assert r["stopped"] + r["leaked"] + r["unresolved"] == r["n_threats"]

@@ -1,0 +1,36 @@
+# scaling study: 25 threats vs 9 sites, same per-site load as suite_small_v2 (~3 threats per site).
+# zero-shot test for the gnn, which only ever trains on 5-10 threats.
+name: suite_scale_n25
+version: 1
+seed: 9025
+n_scenarios: 50
+
+types:
+  # cheap, short range, so-so kill chance, quick reload
+  - {name: short, range: 1500.0, speed: 400.0, p_kill: 0.7, cost: 1.0, magazine: 6, reload: 5.0, max_flight: 20.0}
+  # pricey, long range, good kill chance, slow reload
+  - {name: long, range: 4000.0, speed: 600.0, p_kill: 0.9, cost: 20.0, magazine: 4, reload: 8.0, max_flight: 25.0}
+
+sim:
+  dt: 0.1
+  t_max: 400.0
+  asset_radius: 50.0
+  kill_radius: 10.0
+  nav_gain: 3.0
+  max_accel: 300.0
+  replan_every: 1.0
+
+gen:
+  n_threats: [25, 25]
+  n_effectors: [9, 9]
+  type_mix: {short: 0.7, long: 0.3}
+  arrival: impact_waves
+  window: 60.0
+  n_waves: 2
+  wave_jitter: 3.0
+  value: lognormal
+  value_sigma: 1.0
+  spawn_radius: [4000.0, 6000.0]
+  sector_deg: 120.0
+  threat_speed: [150.0, 250.0]
+  defense_radius: [200.0, 600.0]
