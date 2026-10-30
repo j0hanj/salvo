@@ -34,12 +34,14 @@ def main():
     ap.add_argument("--epochs", type=int, default=None)
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--dagger", type=int, default=None, help="dagger rounds, 0 = plain bc")
+    ap.add_argument("--degree", action="store_true", help="add the log-degree channel")
     args = ap.parse_args()
     cfg = RunConfig(limit=args.limit)
     if args.epochs is not None:
         cfg.train.epochs = args.epochs
     if args.dagger is not None:
         cfg.dagger_rounds = args.dagger
+    cfg.train.degree = args.degree
 
     out = start_run("train", cfg, seed=cfg.train.seed)
     suite = load_suite(cfg.suite)
