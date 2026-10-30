@@ -3,7 +3,7 @@ import numpy as np
 from baselines.greedy import nearest
 from baselines.milp import milp
 from eval.suites import load_suite
-from learned.dataset import Batch, collect
+from learned.dataset import Batch, collect, merge
 
 
 def test_collect_and_roundtrip(tmp_path):
@@ -27,3 +27,17 @@ def test_parallel_matches_serial():
     a = collect(suite, driver=nearest, labeler=milp, limit=4, jobs=1)
     b = collect(suite, driver=nearest, labeler=milp, limit=4, jobs=2)
     assert np.array_equal(a.y, b.y) and np.array_equal(a.edge_x, b.edge_x)
+
+
+def test_merge_keeps_every_graph_intact():
+    suite = load_suite("suite_small_v2")
+    a = collect(suite, driver=nearest, labeler=milp, limit=2)
+    b = collect(suite, driver=milp, labeler=milp, limit=3)
+    m = merge(a, b)
+    assert len(m) == len(a) + len(b)
+    # last graph of the merged set is exactly b's last graph
+    i, j = len(m) - 1, len(b) - 1
+    assert np.array_equal(
+        m.edges[:, m.edge_ptr[i] : m.edge_ptr[i + 1]], b.edges[:, b.edge_ptr[j] : b.edge_ptr[j + 1]]
+    )
+    assert np.array_equal(m.thr_x[m.thr_ptr[i] :], b.thr_x[b.thr_ptr[j] :])

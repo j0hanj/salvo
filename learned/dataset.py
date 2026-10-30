@@ -98,3 +98,18 @@ def collect(suite, driver, labeler, limit=None, jobs=1) -> Batch:
         with Pool(jobs, initializer=_init, initargs=(suite, driver, labeler)) as pool:
             out = pool.map(_work, idx, chunksize=4)
     return pack([(i, g, y) for i, ep in zip(idx, out, strict=True) for g, y in ep])
+
+
+def merge(a: Batch, b: Batch) -> Batch:
+    """stack two datasets. graph-local edge indices don't change, only the pointers shift."""
+    return Batch(
+        eff_x=np.concatenate([a.eff_x, b.eff_x]),
+        thr_x=np.concatenate([a.thr_x, b.thr_x]),
+        edges=np.concatenate([a.edges, b.edges], axis=1),
+        edge_x=np.concatenate([a.edge_x, b.edge_x]),
+        y=np.concatenate([a.y, b.y]),
+        eff_ptr=np.concatenate([a.eff_ptr, b.eff_ptr[1:] + a.eff_ptr[-1]]),
+        thr_ptr=np.concatenate([a.thr_ptr, b.thr_ptr[1:] + a.thr_ptr[-1]]),
+        edge_ptr=np.concatenate([a.edge_ptr, b.edge_ptr[1:] + a.edge_ptr[-1]]),
+        scn=np.concatenate([a.scn, b.scn]),
+    )
