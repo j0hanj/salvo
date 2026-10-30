@@ -44,3 +44,23 @@ def test_policy_only_takes_legal_shots(data):
     for sc in suite.scenarios[:3]:
         run(sc, suite.cfg.sim, suite.cfg.types, checked)
     assert np.isfinite(model.head[0].weight.detach().numpy()).all()
+
+
+def test_capped_decode_spreads_shooters(data):
+    suite, b = data
+    model, _ = train(b, TrainConfig(hidden=16, rounds=1, epochs=2), log=lambda _: 0)
+    # threshold 0 so every effector wants to fire, floor 0.5 so one 0.7+ shooter covers a threat
+    policy = GNNPolicy(model, threshold=0.0, decode="capped", survival_floor=0.5)
+
+    def checked(obs):
+        ok = feasible(obs)
+        pairs = policy(obs)
+        es = [e for e, _ in pairs]
+        assert len(set(es)) == len(es) and all(ok[e, j] for e, j in pairs)
+        # every kill chance in this suite is >= 0.7, so nobody should ever double up
+        js = [j for _, j in pairs]
+        assert len(set(js)) == len(js)
+        return pairs
+
+    for sc in suite.scenarios[:3]:
+        run(sc, suite.cfg.sim, suite.cfg.types, checked)

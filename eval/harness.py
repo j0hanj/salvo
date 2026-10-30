@@ -29,20 +29,21 @@ METHODS = {
 
 @functools.cache
 def resolve(method: str):
-    """baseline name, or "gnn:<path to model.pt>" for a trained policy."""
-    if method.startswith("gnn:"):
+    """baseline name, or "gnn:<path to model.pt>" / "gnn-capped:<path>" for a trained policy."""
+    if method.startswith(("gnn:", "gnn-capped:")):
         # imported here so the baselines don't need torch
         import torch
 
         from learned.model import EdgeScorer
         from learned.policy import GNNPolicy
 
-        ckpt = torch.load(method[4:], weights_only=True)
+        kind, path = method.split(":", 1)
+        ckpt = torch.load(path, weights_only=True)
         cfg = ckpt["config"]
         # older checkpoints predate the degree option
         model = EdgeScorer(cfg["hidden"], cfg["rounds"], cfg.get("degree", False))
         model.load_state_dict(ckpt["state_dict"])
-        return GNNPolicy(model)
+        return GNNPolicy(model, decode="capped" if kind == "gnn-capped" else "argmax")
     return METHODS[method]
 
 
