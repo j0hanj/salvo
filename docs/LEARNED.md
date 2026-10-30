@@ -62,3 +62,10 @@ model is scored on was ever trained on.
   shots. edge-level precision / recall understates how close it is; episode metrics are the truth.
 - latency is python + torch on one cpu thread, no batching across ticks. phase 5 moves inference
   to C++.
+
+## what actually happened
+
+it matches the MILP at training size and over-commits more and more as the swarm grows (numbers
+in the readme and `docs/EXPERIMENTS.md`). the likely culprit is the same mean + max aggregation
+that was supposed to make it size-invariant: it hides how many other effectors are lining up on
+the same threat. untested, next on the list.

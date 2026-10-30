@@ -42,3 +42,19 @@ milp -8.1 [-10.6, -5.7] pts. milp doesn't beat hungarian or greedy-value on valu
 [-1.4, 0.7] and -0.6 [-1.5, 0.2]). milp decision latency about 2.4 ms vs about 0.02 ms for the rest.
 conclusion:
 next: phase 3. bigger suites for the scaling study, MILP-labeled training data, GNN.
+
+## 2026-10-29: phase 3, imitation-trained gnn + zero-shot scaling
+ran: `make train` (`scripts/train.py` at `8bb2ef4`, run `results/20261029-213442-train`): bc on
+milp episodes from suite_train_v1, then 3 dagger rounds, 7568 -> 30847 labeled ticks. then
+`scripts/scaling.py` at `af0bf0b` (run `results/20261029-214947-scaling`): 5 methods x
+suite_scale_n{10,25,50,100,250,500}_v1, 50 scenarios each.
+result: at 10 threats the gnn matches milp on value (94.8 [91.3, 97.4] vs 94.8 [91.3, 97.4]). it
+degrades w size: value 90.5 at 50, 85.0 at 100, 61.3 [59.9, 62.7] at 500, vs 97.2 [96.8, 97.6] for
+hungarian. threats stopped falls to 31.4% at 500. `scripts/stacking.py` (first 5 scenarios): at
+n=10 gnn and milp both put 3+ shooters on a targeted threat 1.7% of the time; at n=100 gnn 22.1% vs
+milp 6.9%, mean shooters per targeted threat 1.98 vs 1.33. gnn latency 12.4 ms at 500 vs 272 ms for
+milp. milp is slightly behind hungarian from 100 up (Δ value -1.0 [-1.2, -0.7] at 500).
+conclusion:
+next: test the aggregation hypothesis. candidates: add a sum / log-degree channel so the model can
+see how many shooters compete for a threat, train on mixed sizes (5-50), or decode gnn scores w a
+capacity-aware step instead of independent argmax per effector.
