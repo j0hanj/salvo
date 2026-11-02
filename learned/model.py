@@ -36,35 +36,49 @@ def scatter_mean_max(src, index, n):
 
 
 class Round(nn.Module):
-    def __init__(self, h):
+    def __init__(self, h, degree: bool = False):
         super().__init__()
+        d = int(degree)
         self.edge = mlp(3 * h, h, h)
-        self.thr = mlp(3 * h, h, h)
-        self.eff = mlp(3 * h, h, h)
+        self.thr = mlp(3 * h + d, h, h)
+        self.eff = mlp(3 * h + d, h, h)
 
-    def forward(self, he, ht, hd, src, dst):
+    def forward(self, he, ht, hd, src, dst, t_deg=None, e_deg=None):
+        """t_deg / e_deg: (n, 1) log(1 + legal edges) per node, or None to leave degree out."""
         # residual updates everywhere so stacking rounds doesn't wash out the input features
         hd = hd + self.edge(torch.cat([hd, he[src], ht[dst]], 1))
         t_mean, t_max = scatter_mean_max(hd, dst, len(ht))
-        ht = ht + self.thr(torch.cat([ht, t_mean, t_max], 1))
+        ht = ht + self.thr(
+            torch.cat([ht, t_mean, t_max, *([t_deg] if t_deg is not None else [])], 1)
+        )
         e_mean, e_max = scatter_mean_max(hd, src, len(he))
-        he = he + self.eff(torch.cat([he, e_mean, e_max], 1))
+        he = he + self.eff(
+            torch.cat([he, e_mean, e_max, *([e_deg] if e_deg is not None else [])], 1)
+        )
         return he, ht, hd
 
 
 class EdgeScorer(nn.Module):
-    def __init__(self, hidden: int = 64, rounds: int = 3):
+    def __init__(self, hidden: int = 64, rounds: int = 3, degree: bool = False):
+        """degree=True adds log(1 + #legal edges) to every node update. mean + max alone can't
+        tell 3 competing shooters from 50, which is the suspected reason it over-stacks at scale."""
         super().__init__()
+        self.degree = degree
         self.enc_eff = mlp(len(EFF_FEATURES), hidden, hidden)
         self.enc_thr = mlp(len(THR_FEATURES), hidden, hidden)
         self.enc_edge = mlp(len(EDGE_FEATURES), hidden, hidden)
-        self.rounds = nn.ModuleList(Round(hidden) for _ in range(rounds))
+        self.rounds = nn.ModuleList(Round(hidden, degree) for _ in range(rounds))
         self.head = mlp(3 * hidden, hidden, 1)
 
     def forward(self, eff_x, thr_x, edges, edge_x):
         """edges: (2, E) long, row 0 indexes eff_x, row 1 indexes thr_x. returns (E,) logits."""
         src, dst = edges
         he, ht, hd = self.enc_eff(eff_x), self.enc_thr(thr_x), self.enc_edge(edge_x)
+        t_deg = e_deg = None
+        if self.degree:
+            ones = torch.ones_like(src, dtype=he.dtype)
+            t_deg = torch.log1p(torch.zeros(len(ht)).index_add_(0, dst, ones)).unsqueeze(1)
+            e_deg = torch.log1p(torch.zeros(len(he)).index_add_(0, src, ones)).unsqueeze(1)
         for r in self.rounds:
-            he, ht, hd = r(he, ht, hd, src, dst)
+            he, ht, hd = r(he, ht, hd, src, dst, t_deg, e_deg)
         return self.head(torch.cat([hd, he[src], ht[dst]], 1)).squeeze(1)

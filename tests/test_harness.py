@@ -42,3 +42,11 @@ def test_gnn_checkpoint_loads_and_runs(tmp_path):
     torch.save({"state_dict": model.state_dict(), "config": {"hidden": 8, "rounds": 1}}, path)
     r = run_one(load_suite("suite_small_v2"), 0, f"gnn:{path}")
     assert r["stopped"] + r["leaked"] + r["unresolved"] == r["n_threats"]
+
+
+def test_stacking_columns():
+    suite = load_suite("suite_small_v2")
+    h = run_one(suite, 0, "hungarian")  # hungarian never stacks
+    assert h["stack_mean"] == 1.0 and h["stack3_frac"] == 0.0
+    m = run_one(suite, 0, "milp")
+    assert m["stack_mean"] >= 1.0

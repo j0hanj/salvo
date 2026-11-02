@@ -58,3 +58,19 @@ conclusion:
 next: test the aggregation hypothesis. candidates: add a sum / log-degree channel so the model can
 see how many shooters compete for a threat, train on mixed sizes (5-50), or decode gnn scores w a
 capacity-aware step instead of independent argmax per effector.
+
+## 2026-10-30: is the over-stacking from aggregation or from decoding?
+ran: `scripts/train.py --degree` at `cdf40a9` (run `results/20261030-002940-train`, same recipe as
+the phase 3 model + a log-degree channel). then `scripts/ablation.py` at `cdf40a9` (run
+`results/20261030-003930-ablation`): {plain, +degree} x {argmax, capped decode} plus hungarian, and
+milp up to 100, on suite_scale_n{10,50,100,500}_v1, 50 scenarios each. table in the readme.
+result: at 500 threats, value defended: gnn 61.3 [59.9, 62.7], gnn+deg 64.4 [62.4, 66.3], gnn
+capped 87.6 [85.8, 89.3], gnn+deg capped 81.7 [79.1, 84.2], hungarian 97.2 [96.8, 97.6]. targeted
+threats w 3+ shooters: gnn 48.6%, gnn+deg 36.5%, both capped variants 0. threats stopped w capped
+decode at 500 is 65.2 [62.2, 68.3] vs 91.2 for hungarian. at 10 threats every variant is within the
+ci of hungarian. a unit test (`tests/test_model.py`) confirms plain mean+max gives identical scores
+when every edge is duplicated, the degree variant doesn't.
+conclusion:
+next: the gap left after capping. threats stopped drops w zero stacking, so effectors are holding
+fire. first thing to check: how the model's confidence on legal edges shifts w graph size vs the
+fixed 0.5 threshold.

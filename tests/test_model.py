@@ -46,3 +46,23 @@ def test_runs_on_any_size_and_no_edges():
         eff_x, thr_x, torch.zeros(2, 0, dtype=torch.long), torch.zeros(0, len(EDGE_FEATURES))
     )
     assert empty.shape == (0,)
+
+
+def test_degree_variant_is_still_equivariant_and_sees_counts():
+    torch.manual_seed(0)
+    model = EdgeScorer(hidden=16, rounds=2, degree=True).eval()
+    eff_x, thr_x, edges, edge_x = random_graph(4, 6, 15)
+    perm = torch.randperm(6)
+    inv = torch.argsort(perm)
+    with torch.no_grad():
+        a = model(eff_x, thr_x, edges, edge_x)
+        b = model(eff_x, thr_x[perm], torch.stack([edges[0], inv[edges[1]]]), edge_x)
+    assert torch.allclose(a, b, atol=1e-5)
+    # duplicate every edge: mean + max are unchanged, so only the degree channel can notice
+    plain = EdgeScorer(hidden=16, rounds=2, degree=False).eval()
+    dup = (torch.cat([edges, edges], 1), torch.cat([edge_x, edge_x]))
+    with torch.no_grad():
+        assert torch.allclose(
+            plain(eff_x, thr_x, edges, edge_x), plain(eff_x, thr_x, *dup)[:15], atol=1e-5
+        )
+        assert not torch.allclose(a, model(eff_x, thr_x, *dup)[:15], atol=1e-5)

@@ -8,6 +8,7 @@ import csv
 import functools
 import os
 import time
+from collections import Counter
 from multiprocessing import Pool
 
 import numpy as np
@@ -29,19 +30,21 @@ METHODS = {
 
 @functools.cache
 def resolve(method: str):
-    """baseline name, or "gnn:<path to model.pt>" for a trained policy."""
-    if method.startswith("gnn:"):
+    """baseline name, or "gnn:<path to model.pt>" / "gnn-capped:<path>" for a trained policy."""
+    if method.startswith(("gnn:", "gnn-capped:")):
         # imported here so the baselines don't need torch
         import torch
 
         from learned.model import EdgeScorer
         from learned.policy import GNNPolicy
 
-        ckpt = torch.load(method[4:], weights_only=True)
+        kind, path = method.split(":", 1)
+        ckpt = torch.load(path, weights_only=True)
         cfg = ckpt["config"]
-        model = EdgeScorer(cfg["hidden"], cfg["rounds"])
+        # older checkpoints predate the degree option
+        model = EdgeScorer(cfg["hidden"], cfg["rounds"], cfg.get("degree", False))
         model.load_state_dict(ckpt["state_dict"])
-        return GNNPolicy(model)
+        return GNNPolicy(model, decode="capped" if kind == "gnn-capped" else "argmax")
     return METHODS[method]
 
 
@@ -50,11 +53,14 @@ class Timed:
 
     only ticks w at least one legal shot count. most ticks have nothing to decide and return in
     microseconds, which would drown out the calls that actually matter.
+
+    also counts shooters per targeted threat per tick, the gnn's failure mode at scale.
     """
 
     def __init__(self, policy):
         self.policy = policy
         self.ms = []
+        self.stack = []
 
     def __call__(self, obs):
         live = feasible(obs).any()  # checked outside the timer
@@ -62,6 +68,7 @@ class Timed:
         out = self.policy(obs)
         if live:
             self.ms.append((time.perf_counter() - t0) * 1e3)
+        self.stack.extend(Counter(j for _, j in out).values())
         return out
 
 
@@ -91,6 +98,11 @@ def run_one(suite, idx: int, method: str) -> dict:
         "lat_mean_ms": float(ms.mean()) if len(ms) else float("nan"),
         "lat_p95_ms": float(np.percentile(ms, 95)) if len(ms) else float("nan"),
         "lat_max_ms": float(ms.max()) if len(ms) else float("nan"),
+        # shooters per targeted threat per tick, and how often that's 3+
+        "stack_mean": float(np.mean(policy.stack)) if policy.stack else float("nan"),
+        "stack3_frac": float(np.mean(np.array(policy.stack) >= 3))
+        if policy.stack
+        else float("nan"),
     }
 
 
