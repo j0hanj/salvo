@@ -30,8 +30,9 @@ METHODS = {
 
 @functools.cache
 def resolve(method: str):
-    """baseline name, or "gnn:<path to model.pt>" / "gnn-capped:<path>" for a trained policy."""
-    if method.startswith(("gnn:", "gnn-capped:")):
+    """baseline name, or "gnn:<path to model.pt>" / "gnn-capped:<path>" for a trained policy.
+    "gnn@0.3:<path>" / "gnn-capped@0.3:<path>" overrides the fire threshold (default 0.5)."""
+    if method.startswith(("gnn:", "gnn-capped:", "gnn@", "gnn-capped@")):
         # imported here so the baselines don't need torch
         import torch
 
@@ -39,12 +40,17 @@ def resolve(method: str):
         from learned.policy import GNNPolicy
 
         kind, path = method.split(":", 1)
+        kind, _, thr = kind.partition("@")
         ckpt = torch.load(path, weights_only=True)
         cfg = ckpt["config"]
         # older checkpoints predate the degree option
         model = EdgeScorer(cfg["hidden"], cfg["rounds"], cfg.get("degree", False))
         model.load_state_dict(ckpt["state_dict"])
-        return GNNPolicy(model, decode="capped" if kind == "gnn-capped" else "argmax")
+        return GNNPolicy(
+            model,
+            threshold=float(thr) if thr else 0.5,
+            decode="capped" if kind == "gnn-capped" else "argmax",
+        )
     return METHODS[method]
 
 

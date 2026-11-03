@@ -27,6 +27,13 @@ class GNNPolicy:
         self._threads_set = False
 
     def __call__(self, obs: Obs) -> list[tuple[int, int]]:
+        g, p = self.scores(obs)
+        if g is None:
+            return []
+        return self.decode_scores(obs, g, p)
+
+    def scores(self, obs: Obs):
+        """(graph, sigmoid score per legal edge), or (None, None) if there's no legal shot."""
         if not self._threads_set:
             # one thread per process: fair latency vs the other baselines + no oversubscription
             # when the harness runs scenarios in parallel
@@ -34,7 +41,7 @@ class GNNPolicy:
             self._threads_set = True
         g = featurize(obs)
         if g.edges.shape[1] == 0:
-            return []
+            return None, None
         with torch.no_grad():
             p = torch.sigmoid(
                 self.model(
@@ -44,6 +51,9 @@ class GNNPolicy:
                     torch.from_numpy(g.edge_x),
                 )
             ).numpy()
+        return g, p
+
+    def decode_scores(self, obs: Obs, g, p) -> list[tuple[int, int]]:
         if self.decode == "capped":
             return self._capped(obs, g, p)
         pairs = []
