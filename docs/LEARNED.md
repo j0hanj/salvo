@@ -66,6 +66,20 @@ model is scored on was ever trained on.
 ## what actually happened
 
 it matches the MILP at training size and over-commits more and more as the swarm grows (numbers
-in the readme and `docs/EXPERIMENTS.md`). the likely culprit is the same mean + max aggregation
-that was supposed to make it size-invariant: it hides how many other effectors are lining up on
-the same threat. untested, next on the list.
+in the readme and `docs/EXPERIMENTS.md`). three follow-ups narrowed down why:
+
+- **aggregation** (`scripts/ablation.py`). mean + max can't count how many effectors line up on
+  a threat, so a log-degree channel was added (`EdgeScorer(degree=True)`, `scripts/train.py
+  --degree`). it barely helps. the aggregation wasn't the main problem.
+- **decoding** (`learned/policy.py`, `decode="capped"`). the default decode lets every effector
+  argmax on its own, so nothing stops twenty of them picking the same threat. capped decode walks
+  edges most-confident-first and skips a threat once it's covered. stacking goes to zero and most
+  of the loss comes back. this was the main problem.
+- **the fire threshold** (`scripts/confidence.py`, `scripts/threshold.py`). an edge only fires if
+  its score is >= 0.5, and the scores shrink on bigger graphs, so at scale most free effectors sit
+  idle next to an uncovered threat. dropping the threshold closes most of what's left.
+
+with both fixes it's close to hungarian at 500 threats but still behind greedy-value, a
+hand-written ranking, while firing more shots. the per-edge bce loss gives scores that mean
+something at the training size and drift as the graph grows. mixed-size training or a per-effector
+ranking loss are the obvious next things to try.
