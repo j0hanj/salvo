@@ -74,3 +74,21 @@ conclusion:
 next: the gap left after capping. threats stopped drops w zero stacking, so effectors are holding
 fire. first thing to check: how the model's confidence on legal edges shifts w graph size vs the
 fixed 0.5 threshold.
+
+## 2026-11-03: is the gap after capping the fire threshold?
+ran: `scripts/confidence.py` at `ec2f8cd` (run `results/20261103-153508-confidence`) and
+`scripts/threshold.py` at `5c5d500` (run `results/20261103-153806-threshold`), plain phase 3 model
+(`results/20261029-213442-train`, trained at `8bb2ef4`), capped decode, suite_scale_n{10,50,100,500}_v1,
+50 scenarios each. tables in the readme and `docs/tables/{confidence,threshold}.md`.
+result: median best-edge score per free effector is 1.00 at 10 threats, 0.98 at 50, 0.61 at 100,
+0.64 at 500. share of free effectors w no edge >= 0.5: 0.4% at 10, 42.6% [40.4, 44.9] at 500. idle
+while a reachable threat is still uncovered: 0.4% at 10, 71.8% [70.3, 73.3] at 500. threshold
+sweep at 500, value defended: 87.6 [85.8, 89.3] at 0.5, 90.8 at 0.3, 94.6 at 0.1, 95.4 [94.8, 96.1]
+at 0.0; threats stopped 65.2 -> 84.9. hungarian 97.2, greedy-value 97.2 [96.8, 97.6]. gnn at 0.0 is
+Δ -1.7 [-2.0, -1.4] vs hungarian and fires 1.16x hungarian's shots, greedy-value 1.00x. at 10
+threats every threshold is within the ci of hungarian. threshold was swept on the eval suites.
+conclusion:
+next: the scores aren't calibrated across sizes, and even as a pure ranking the gnn loses to
+greedy-value at scale. options: train on mixed sizes (5-50) so scores see bigger graphs, or train
+w a ranking / listwise loss per effector instead of per-edge bce, then pick a threshold on a held
+out suite rather than the eval ones.
