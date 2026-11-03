@@ -50,3 +50,19 @@ def test_stacking_columns():
     assert h["stack_mean"] == 1.0 and h["stack3_frac"] == 0.0
     m = run_one(suite, 0, "milp")
     assert m["stack_mean"] >= 1.0
+
+
+def test_gnn_threshold_override(tmp_path):
+    import torch
+
+    from eval.harness import resolve
+    from learned.model import EdgeScorer
+
+    path = tmp_path / "m.pt"
+    model = EdgeScorer(hidden=8, rounds=1)
+    torch.save({"state_dict": model.state_dict(), "config": {"hidden": 8, "rounds": 1}}, path)
+    assert resolve(f"gnn:{path}").threshold == 0.5
+    p = resolve(f"gnn-capped@0.2:{path}")
+    assert p.threshold == 0.2 and p.decode == "capped"
+    r = run_one(load_suite("suite_small_v2"), 0, f"gnn-capped@0:{path}")
+    assert r["stopped"] + r["leaked"] + r["unresolved"] == r["n_threats"]
