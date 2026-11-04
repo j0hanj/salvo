@@ -197,6 +197,11 @@ and a hand-written ranking does that better: greedy-value gets 97.2 at 500 w 1.0
 shots, the gnn 95.4 w 1.16x. the threshold was swept on the eval suites, so this is a diagnostic,
 not a tuned number.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/threshold_dark.png">
+  <img alt="gap vs hungarian as the fire threshold drops, per raid size" src="docs/figures/threshold_light.png">
+</picture>
+
 <details><summary>confidence + threshold tables</summary>
 
 <!-- confidence -->
