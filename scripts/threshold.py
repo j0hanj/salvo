@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import numpy as np
+import yaml
 
 from eval.harness import evaluate, write_csv
 from eval.runlog import start_run
@@ -43,9 +44,15 @@ def main():
     ap.add_argument("--model", required=True)
     ap.add_argument("--jobs", type=int, default=None)
     ap.add_argument("--limit", type=int, default=None)
+    ap.add_argument(
+        "--tag", default="", help="writes threshold_<tag>.md + readme block, for a second model"
+    )
     args = ap.parse_args()
     cfg = ThresholdConfig(model=args.model)
     model_commit = json.loads((Path(cfg.model).parent / "meta.json").read_text())["git_commit"]
+    tcfg = yaml.safe_load((Path(cfg.model).parent / "config.yaml").read_text())
+    # older runs had a single `suite`
+    train_suites = tcfg.get("suites") or [tcfg["suite"]]
     out = start_run("threshold", cfg, seed=cfg.seed)
     kw = {"n_boot": cfg.n_boot, "seed": cfg.seed}
     names = {f"gnn-capped@{t}:{cfg.model}": f"gnn capped @{t}" for t in cfg.thresholds}
@@ -89,15 +96,17 @@ def main():
         "capped decode at each fire threshold. shots vs hungarian = interceptors launched per "
         "scenario / hungarian's on the same scenario. 95% bootstrap cis, Δ paired per scenario. "
         "threshold swept on the eval suites, so read it as a diagnostic, not a tuned result. "
-        f"model from `scripts/train.py` at `{model_commit[:7]}`. made by `scripts/threshold.py` "
-        f"at `{commit[:7]}`.",
+        f"model `{Path(cfg.model).parent.name}`, trained on {', '.join(train_suites)} by "
+        f"`scripts/train.py` at `{model_commit[:7]}`. made by `scripts/threshold.py` at "
+        f"`{commit[:7]}`.",
     ]
     md = "\n".join(lines) + "\n"
     (out / "summary.md").write_text(md)
     if args.limit is None:
         Path("docs/tables").mkdir(parents=True, exist_ok=True)
-        Path("docs/tables/threshold.md").write_text(md)
-        splice_readme("threshold", md)
+        key = f"threshold_{args.tag}" if args.tag else "threshold"
+        Path(f"docs/tables/{key}.md").write_text(md)
+        splice_readme(key, md)
     print(md)
     print(f"run logged to {out}")
 
