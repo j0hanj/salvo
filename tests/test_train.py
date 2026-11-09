@@ -64,3 +64,14 @@ def test_capped_decode_spreads_shooters(data):
 
     for sc in suite.scenarios[:3]:
         run(sc, suite.cfg.sim, suite.cfg.types, checked)
+
+
+def test_collect_all_keeps_scenarios_apart():
+    from baselines.milp import milp
+    from eval.suites import load_suite
+    from scripts.train import SCN_STRIDE, collect_all
+
+    suites = [load_suite("suite_train_v1"), load_suite("suite_small_v2")]
+    b = collect_all(suites, milp, limit=1, jobs=1)
+    # scenario 0 of each suite, kept distinct so a by-scenario split can't straddle them
+    assert set(b.scn.tolist()) == {0, SCN_STRIDE}

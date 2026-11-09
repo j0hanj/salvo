@@ -23,10 +23,25 @@ from learned.train import TrainConfig, train
 
 @dataclass
 class RunConfig:
-    suite: str = "suite_train_v1"
+    # more than one = mixed sizes. scenario ids get offset per suite so the train/val split
+    # (by scenario) can't mix up scenario 3 of one suite w scenario 3 of another
+    suites: list[str] = field(default_factory=lambda: ["suite_train_v1"])
     limit: int | None = None
     dagger_rounds: int = 3
     train: TrainConfig = field(default_factory=TrainConfig)
+
+
+SCN_STRIDE = 1_000_000
+
+
+def collect_all(suites, driver, limit, jobs):
+    """milp labels every suite, scenario ids offset by SCN_STRIDE per suite so they stay unique."""
+    out = None
+    for k, suite in enumerate(suites):
+        b = collect(suite, driver=driver, labeler=milp, limit=limit, jobs=jobs)
+        b.scn = b.scn + k * SCN_STRIDE
+        out = b if out is None else merge(out, b)
+    return out
 
 
 def main():
@@ -35,6 +50,7 @@ def main():
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--dagger", type=int, default=None, help="dagger rounds, 0 = plain bc")
     ap.add_argument("--degree", action="store_true", help="add the log-degree channel")
+    ap.add_argument("--suites", nargs="+", default=None, help="training suites, default 5-10 only")
     args = ap.parse_args()
     cfg = RunConfig(limit=args.limit)
     if args.epochs is not None:
@@ -42,9 +58,11 @@ def main():
     if args.dagger is not None:
         cfg.dagger_rounds = args.dagger
     cfg.train.degree = args.degree
+    if args.suites:
+        cfg.suites = args.suites
 
     out = start_run("train", cfg, seed=cfg.train.seed)
-    suite = load_suite(cfg.suite)
+    suites = [load_suite(s) for s in cfg.suites]
     jobs = os.cpu_count() or 1
     history = []
 
@@ -68,12 +86,11 @@ def main():
             return model
 
         # round 0 = plain behavior cloning on milp's own episodes
-        data = collect(suite, driver=milp, labeler=milp, limit=cfg.limit, jobs=jobs)
+        data = collect_all(suites, milp, cfg.limit, jobs)
         model = fit(0, data)
         for k in range(1, cfg.dagger_rounds + 1):
             # the model drives, milp only labels. these are the states plain bc never sees
-            new = collect(suite, driver=GNNPolicy(model), labeler=milp, limit=cfg.limit, jobs=jobs)
-            data = merge(data, new)
+            data = merge(data, collect_all(suites, GNNPolicy(model), cfg.limit, jobs))
             model = fit(k, data)
 
     torch.save({"state_dict": model.state_dict(), "config": asdict(cfg.train)}, out / "model.pt")

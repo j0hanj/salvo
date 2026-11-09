@@ -92,3 +92,22 @@ next: the scores aren't calibrated across sizes, and even as a pure ranking the 
 greedy-value at scale. options: train on mixed sizes (5-50) so scores see bigger graphs, or train
 w a ranking / listwise loss per effector instead of per-edge bce, then pick a threshold on a held
 out suite rather than the eval ones.
+
+## 2026-11-06: does training on bigger fights keep the scores calibrated?
+ran: `scripts/train.py --suites suite_train_v1 suite_train_n25_v1 suite_train_n50_v1` at `e54b5de`
+(run `results/20261106-141850-train`, same bc + 3 dagger recipe, 59095 labeled ticks by the last
+round). then `scripts/threshold.py --tag mixed` at `e64056c` (run
+`results/20261106-144508-threshold`) on suite_scale_n{10,50,100,500}_v1, 50 scenarios each. table
+in the readme and `docs/tables/threshold_mixed.md`, compare to `docs/tables/threshold.md` (5-10
+only model).
+result: Δ value vs hungarian at threshold 0.5, mixed vs 5-10 only: 10 threats 0.2 vs 0.5, 50
+threats -0.7 [-1.6, 0.2] vs -2.9 [-4.2, -1.6], 100 threats -2.3 [-3.1, -1.5] vs -5.4 [-7.3, -3.6],
+500 threats -11.4 [-13.3, -9.6] vs -9.6 [-11.1, -8.1]. at threshold 0.0: 50 threats -0.5 vs -0.8,
+100 -0.8 vs -0.9, 500 -1.9 [-2.3, -1.6] vs -1.7 [-2.0, -1.4]. at 50 threats every threshold is
+within 0.3 of each other for the mixed model. greedy-value at 500 is 0.1 [-0.1, 0.2]. mixed model
+fires 1.17x hungarian's shots at 500, threshold 0.0.
+conclusion:
+next: scores stay calibrated roughly where there's training data and drift past it, and even
+perfectly thresholded the gnn ranks worse than greedy-value at 500. a per-effector ranking loss
+(softmax over an effector's legal edges + a "hold" option) would make scores comparable across
+sizes by construction instead of by coverage.
