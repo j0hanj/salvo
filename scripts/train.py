@@ -50,6 +50,7 @@ def main():
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--dagger", type=int, default=None, help="dagger rounds, 0 = plain bc")
     ap.add_argument("--degree", action="store_true", help="add the log-degree channel")
+    ap.add_argument("--loss", choices=["bce", "listwise"], default="bce")
     ap.add_argument("--suites", nargs="+", default=None, help="training suites, default 5-10 only")
     args = ap.parse_args()
     cfg = RunConfig(limit=args.limit)
@@ -58,6 +59,7 @@ def main():
     if args.dagger is not None:
         cfg.dagger_rounds = args.dagger
     cfg.train.degree = args.degree
+    cfg.train.loss = args.loss
     if args.suites:
         cfg.suites = args.suites
 

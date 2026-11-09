@@ -111,3 +111,23 @@ next: scores stay calibrated roughly where there's training data and drift past 
 perfectly thresholded the gnn ranks worse than greedy-value at 500. a per-effector ranking loss
 (softmax over an effector's legal edges + a "hold" option) would make scores comparable across
 sizes by construction instead of by coverage.
+
+## 2026-11-09: does a per-effector ranking loss make scores size-independent?
+ran: `scripts/train.py --loss listwise` at `3540f0e` (run `results/20261109-125935-train`,
+suite_train_v1 only, bc + 3 dagger, same as the phase 3 model except the loss). loss = per
+effector, softmax over its legal edge logits + a fixed hold logit 0, target = milp's edge or hold
+(checked on the mixed run's data: milp never fires one effector twice in a tick). then
+`scripts/threshold.py --tag listwise` at `3540f0e` (run `results/20261109-130741-threshold`),
+suite_scale_n{10,50,100,500}_v1, 50 scenarios each. table in the readme and
+`docs/tables/threshold_listwise.md`.
+result: every threshold from 0.5 to 0.0 gives identical rows at every size. Δ value vs hungarian:
+10 threats -7.1 [-10.4, -4.1], 50 -12.0 [-15.6, -8.7], 100 -10.7 [-12.9, -8.7], 500 -14.5
+[-16.4, -12.7]. threats stopped at 500: 83.0 [80.9, 85.1] (hungarian 91.2). shots vs hungarian
+1.07x at 10, 1.18x at 500. bce model at threshold 0.0 for comparison: -1.7 [-2.0, -1.4] at 500.
+in training, val edge precision = positive rate and recall = 1.0, i.e. every legal edge scores
+above hold.
+conclusion:
+next: the softmax is per effector, so logits are only comparable within one effector, but capped
+decode sorts all edges together. either train a cross-effector ordering (e.g. pairwise loss on
+milp's pick order, or softmax per threat too), or decode differently (each effector proposes its
+argmax, threats resolve by value). bce + threshold 0 is still the best gnn so far.

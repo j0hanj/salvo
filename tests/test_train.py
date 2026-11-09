@@ -75,3 +75,33 @@ def test_collect_all_keeps_scenarios_apart():
     b = collect_all(suites, milp, limit=1, jobs=1)
     # scenario 0 of each suite, kept distinct so a by-scenario split can't straddle them
     assert set(b.scn.tolist()) == {0, SCN_STRIDE}
+
+
+def test_listwise_loss_matches_cross_entropy():
+    import torch
+
+    from learned.train import listwise_loss
+
+    # effector 0: edges [1.0, -2.0], fired along the first. effector 1: edge [0.5], held.
+    # effector 2: no legal edges, must be ignored.
+    logits = torch.tensor([1.0, -2.0, 0.5], requires_grad=True)
+    y = torch.tensor([1.0, 0.0, 0.0])
+    src = torch.tensor([0, 0, 1])
+    got = listwise_loss(logits, y, src, n_eff=3)
+    ce = torch.nn.functional.cross_entropy
+    want0 = ce(torch.tensor([[1.0, -2.0, 0.0]]), torch.tensor([0]))
+    want1 = ce(torch.tensor([[0.5, 0.0]]), torch.tensor([1]))
+    assert torch.isclose(got, (want0 + want1) / 2)
+    got.backward()
+    assert torch.isfinite(logits.grad).all()
+
+
+def test_listwise_training_runs():
+    from baselines.milp import milp
+    from eval.suites import load_suite
+    from learned.dataset import collect
+    from learned.train import TrainConfig, train
+
+    b = collect(load_suite("suite_train_v1"), driver=milp, labeler=milp, limit=6, jobs=1)
+    _, hist = train(b, TrainConfig(hidden=8, rounds=1, epochs=2, loss="listwise"), log=lambda _: 0)
+    assert len(hist) == 2 and all(h["val_loss"] == h["val_loss"] for h in hist)  # not nan
