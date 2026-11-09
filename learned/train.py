@@ -1,4 +1,11 @@
-"""behavior cloning: binary cross-entropy on every legal edge, target = did milp fire along it.
+"""behavior cloning. two losses:
+
+- "bce": binary cross-entropy on every legal edge, target = did milp fire along it. each edge is
+  judged alone, so what a score means depends on how many other edges the effector has.
+- "listwise": per effector, a softmax over its legal edges plus a fixed "hold" logit of 0, target
+  = the edge milp fired along, or hold. milp fires at most once per effector per tick, so that's
+  an exact categorical. a logit is then log-odds vs holding fire, which shouldn't drift w graph
+  size, and sigmoid(logit) >= 0.5 still means "better than holding" at decode time.
 
 train/val split is by scenario, not by tick. ticks from the same episode are near-duplicates, so a
 tick-level split would leak and make val look better than it is.
@@ -19,6 +26,7 @@ class TrainConfig:
     hidden: int = 64
     rounds: int = 3
     degree: bool = False  # see EdgeScorer
+    loss: str = "bce"  # or "listwise", see module docstring
     lr: float = 1e-3
     epochs: int = 30
     graphs_per_step: int = 64
@@ -59,6 +67,18 @@ def split(b: Batch, val_frac: float, seed: int):
     return np.flatnonzero(~is_val), np.flatnonzero(is_val)
 
 
+def listwise_loss(logits, y, src, n_eff):
+    """mean over effectors w a legal edge of -log softmax([edge logits..., 0 = hold])[target]."""
+    h = torch.zeros(n_eff, dtype=logits.dtype)
+    # per-effector max (incl. the hold logit 0) for a stable logsumexp
+    m = h.scatter_reduce(0, src, logits.detach(), reduce="amax", include_self=True)
+    den = torch.exp(-m).index_add(0, src, torch.exp(logits - m[src]))
+    lse = torch.log(den) + m
+    target = h.index_add(0, src, y * logits)  # chosen edge's logit, or 0 if it held
+    has = h.index_add(0, src, torch.ones_like(logits)) > 0
+    return (lse - target)[has].mean()
+
+
 def evaluate(model, b: Batch, ids, loss_fn) -> dict:
     model.eval()
     with torch.no_grad():
@@ -66,7 +86,7 @@ def evaluate(model, b: Batch, ids, loss_fn) -> dict:
         logits = model(eff, thr, edges, ex)
         pred = (logits > 0).float()
     return {
-        "loss": float(loss_fn(logits, y)),
+        "loss": float(loss_fn(logits, y, edges[0], len(eff))),
         "edge_acc": float((pred == y).float().mean()),
         # of the shots milp took, how many did the model also take
         "recall": float((pred * y).sum() / y.sum().clamp(min=1)),
@@ -84,14 +104,20 @@ def train(b: Batch, cfg: TrainConfig, log=print):
     pos = float(
         b.y[np.concatenate([np.arange(b.edge_ptr[i], b.edge_ptr[i + 1]) for i in tr])].mean()
     )
-    loss_fn = nn.BCEWithLogitsLoss(pos_weight=torch.tensor((1 - pos) / max(pos, 1e-6)))
+    if cfg.loss == "listwise":
+        loss_fn = listwise_loss
+    elif cfg.loss == "bce":
+        bce = nn.BCEWithLogitsLoss(pos_weight=torch.tensor((1 - pos) / max(pos, 1e-6)))
+        loss_fn = lambda logits, y, src, n_eff: bce(logits, y)  # noqa: E731
+    else:
+        raise ValueError(f"unknown loss {cfg.loss!r}")
     history = []
     for epoch in range(cfg.epochs):
         model.train()
         order = rng.permutation(tr)
         for k in range(0, len(order), cfg.graphs_per_step):
             eff, thr, edges, ex, y = tensors(b, order[k : k + cfg.graphs_per_step])
-            loss = loss_fn(model(eff, thr, edges, ex), y)
+            loss = loss_fn(model(eff, thr, edges, ex), y, edges[0], len(eff))
             opt.zero_grad()
             loss.backward()
             opt.step()
