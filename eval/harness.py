@@ -31,7 +31,8 @@ METHODS = {
 @functools.cache
 def resolve(method: str):
     """baseline name, or "gnn:<path to model.pt>" / "gnn-capped:<path>" for a trained policy.
-    "gnn@0.3:<path>" / "gnn-capped@0.3:<path>" overrides the fire threshold (default 0.5)."""
+    "gnn@0.3:<path>" / "gnn-capped@0.3:<path>" overrides the fire threshold (default 0.5).
+    "gnn-capped@0.3/0.4:<path>" also overrides capped decode's survival floor (default 0.1)."""
     if method.startswith(("gnn:", "gnn-capped:", "gnn@", "gnn-capped@")):
         # imported here so the baselines don't need torch
         import torch
@@ -40,7 +41,8 @@ def resolve(method: str):
         from learned.policy import GNNPolicy
 
         kind, path = method.split(":", 1)
-        kind, _, thr = kind.partition("@")
+        kind, _, spec = kind.partition("@")
+        thr, _, floor = spec.partition("/")
         ckpt = torch.load(path, weights_only=True)
         cfg = ckpt["config"]
         # older checkpoints predate the degree option
@@ -50,6 +52,7 @@ def resolve(method: str):
             model,
             threshold=float(thr) if thr else 0.5,
             decode="capped" if kind == "gnn-capped" else "argmax",
+            survival_floor=float(floor) if floor else 0.1,
         )
     return METHODS[method]
 
