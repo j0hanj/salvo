@@ -131,3 +131,21 @@ next: the softmax is per effector, so logits are only comparable within one effe
 decode sorts all edges together. either train a cross-effector ordering (e.g. pairwise loss on
 milp's pick order, or softmax per threat too), or decode differently (each effector proposes its
 argmax, threats resolve by value). bce + threshold 0 is still the best gnn so far.
+
+## 2026-11-11: is the leftover overfire the survival floor?
+ran: `scripts/threshold.py --thresholds 0 --floors 0.1 0.35 0.5 --tag floor` at `5cfa60f` (run
+`results/20261111-224039-threshold`), 5-10 threat bce model (`results/20261029-213442-train`,
+trained at `8bb2ef4`), capped decode, suite_scale_n{10,50,100,500}_v1, 50 scenarios each. table in
+the readme and `docs/tables/threshold_floor.md`. 0.3 itself was skipped: one 0.7 shooter leaves
+survival at 1 - 0.7 = 0.30000000000000004 in float, just above 0.3, so it acts like 0.1.
+result: Δ value vs hungarian, floor 0.1 -> 0.35: 10 threats 0.4 -> 0.6 [-0.3, 1.6], 50 -0.8 -> 0.3
+[-0.4, 1.0], 100 -0.9 -> -0.2 [-0.8, 0.3], 500 -1.7 [-2.0, -1.4] -> 0.0 [-0.2, 0.3]. shots vs
+hungarian at 500: 1.16x -> 1.00x. threats stopped at 500: 84.9 -> 91.8 [90.2, 93.2] (hungarian
+91.2). floor 0.5 gives the same rows as 0.35 at every size. greedy-value at 500: 0.1 [-0.1, 0.2].
+both floors >= 0.35 mean at most one shooter per threat per tick for these two effector types
+(p_kill 0.7 and 0.9). swept on the eval suites.
+conclusion:
+next: the gnn now ties the centralized baselines once decode forces one shooter per threat. that's
+the setup to carry into phase 4 (decentralized, lossy comms), where hungarian / milp need a
+central node and the gnn doesn't. before that: confirm on a held-out suite, and check whether a
+floor that allows doubling up on high-value threats beats a flat one.
