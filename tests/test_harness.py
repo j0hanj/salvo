@@ -63,6 +63,7 @@ def test_gnn_threshold_override(tmp_path):
     torch.save({"state_dict": model.state_dict(), "config": {"hidden": 8, "rounds": 1}}, path)
     assert resolve(f"gnn:{path}").threshold == 0.5
     p = resolve(f"gnn-capped@0.2:{path}")
-    assert p.threshold == 0.2 and p.decode == "capped"
+    assert p.threshold == 0.2 and p.decode == "capped" and p.survival_floor == 0.1
+    assert resolve(f"gnn-capped@0/0.4:{path}").survival_floor == 0.4
     r = run_one(load_suite("suite_small_v2"), 0, f"gnn-capped@0:{path}")
     assert r["stopped"] + r["leaked"] + r["unresolved"] == r["n_threats"]

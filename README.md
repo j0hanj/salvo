@@ -338,6 +338,53 @@ compares scores across effectors to decide who shoots first, which this loss nev
 
 </details>
 
+### the last gap was the decode putting two shooters on a threat
+
+capped decode keeps adding shooters until a threat's chance of surviving them all is <= 0.1. a
+0.7 short-range shooter alone leaves 0.3, so it usually sends two, which is where the extra 16%
+of shots at 500 went. raising that floor to 0.35 (`scripts/threshold.py --thresholds 0 --floors
+0.1 0.35 0.5 --tag floor`, 5-10 threat model, threshold 0): Δ value vs hungarian at 500 goes -1.7
+[-2.0, -1.4] -> 0.0 [-0.2, 0.3], threats stopped 84.9 -> 91.8, shots 1.16x -> 1.00x. at 10, 50,
+100 it's within the ci of hungarian too. 0.35 and 0.5 give identical rows.
+
+what this does and doesn't show: any floor between 0.3 and 0.7 means "one shooter per threat per
+tick" for these effector types, which is the same structure hungarian and greedy-value already
+have. so the gnn isn't beating them, it's supplying an ordering that's as good as theirs once the
+decode stops it from doubling up. it's also picked on the eval suites. and on one cpu it's still
+slower than hungarian at 500 (latency columns above). the case for it is phase 4, where there's
+no central solver to run hungarian.
+
+<details><summary>survival floor table</summary>
+
+<!-- threshold_floor -->
+| threats | method | value defended % | Δ value vs hungarian | threats stopped % | shots vs hungarian | targeted threats w 3+ shooters % |
+|---|---|---|---|---|---|---|
+| 10 | hungarian | 94.4 [90.8, 97.1] | — | 91.8 [88.4, 94.8] | 1.00 [1.00, 1.00]x | 0.0 [0.0, 0.0] |
+| 10 | greedy-value | 93.8 [90.1, 96.7] | -0.6 [-1.6, 0.0] | 91.2 [87.8, 94.2] | 1.00 [0.99, 1.00]x | 0.0 [0.0, 0.0] |
+| 10 | gnn capped @0.0 floor 0.1 | 94.8 [91.3, 97.4] | 0.4 [-1.2, 2.1] | 91.2 [87.8, 94.2] | 1.05 [1.03, 1.07]x | 0.0 [0.0, 0.0] |
+| 10 | gnn capped @0.0 floor 0.35 | 95.0 [91.4, 97.7] | 0.6 [-0.3, 1.6] | 92.4 [89.2, 95.4] | 1.00 [0.99, 1.01]x | 0.0 [0.0, 0.0] |
+| 10 | gnn capped @0.0 floor 0.5 | 95.0 [91.4, 97.7] | 0.6 [-0.3, 1.6] | 92.4 [89.2, 95.4] | 1.00 [0.99, 1.01]x | 0.0 [0.0, 0.0] |
+| 50 | hungarian | 96.7 [95.6, 97.7] | — | 91.6 [89.1, 93.7] | 1.00 [1.00, 1.00]x | 0.0 [0.0, 0.0] |
+| 50 | greedy-value | 96.1 [94.7, 97.3] | -0.6 [-1.8, 0.3] | 91.0 [88.5, 93.3] | 1.00 [0.99, 1.01]x | 0.0 [0.0, 0.0] |
+| 50 | gnn capped @0.0 floor 0.1 | 96.0 [94.8, 97.0] | -0.8 [-1.8, 0.2] | 87.7 [85.0, 90.2] | 1.13 [1.11, 1.15]x | 0.0 [0.0, 0.0] |
+| 50 | gnn capped @0.0 floor 0.35 | 97.0 [96.1, 97.9] | 0.3 [-0.4, 1.0] | 91.5 [89.1, 93.6] | 1.01 [1.00, 1.01]x | 0.0 [0.0, 0.0] |
+| 50 | gnn capped @0.0 floor 0.5 | 97.0 [96.1, 97.9] | 0.3 [-0.4, 1.0] | 91.5 [89.1, 93.6] | 1.01 [1.00, 1.01]x | 0.0 [0.0, 0.0] |
+| 100 | hungarian | 97.2 [96.5, 97.8] | — | 92.1 [90.4, 93.7] | 1.00 [1.00, 1.00]x | 0.0 [0.0, 0.0] |
+| 100 | greedy-value | 97.3 [96.8, 97.9] | 0.1 [-0.2, 0.6] | 92.2 [90.6, 93.7] | 1.00 [0.99, 1.00]x | 0.0 [0.0, 0.0] |
+| 100 | gnn capped @0.0 floor 0.1 | 96.3 [95.4, 97.1] | -0.9 [-1.4, -0.5] | 88.2 [86.3, 90.0] | 1.14 [1.12, 1.16]x | 0.0 [0.0, 0.0] |
+| 100 | gnn capped @0.0 floor 0.35 | 97.0 [96.3, 97.6] | -0.2 [-0.8, 0.3] | 92.0 [90.4, 93.5] | 1.00 [1.00, 1.01]x | 0.0 [0.0, 0.0] |
+| 100 | gnn capped @0.0 floor 0.5 | 97.0 [96.3, 97.6] | -0.2 [-0.8, 0.3] | 92.0 [90.4, 93.5] | 1.00 [1.00, 1.01]x | 0.0 [0.0, 0.0] |
+| 500 | hungarian | 97.2 [96.8, 97.6] | — | 91.2 [89.7, 92.7] | 1.00 [1.00, 1.00]x | 0.0 [0.0, 0.0] |
+| 500 | greedy-value | 97.2 [96.8, 97.6] | 0.1 [-0.1, 0.2] | 91.3 [89.8, 92.7] | 1.00 [1.00, 1.00]x | 0.0 [0.0, 0.0] |
+| 500 | gnn capped @0.0 floor 0.1 | 95.4 [94.8, 96.1] | -1.7 [-2.0, -1.4] | 84.9 [83.0, 86.8] | 1.16 [1.15, 1.18]x | 0.0 [0.0, 0.0] |
+| 500 | gnn capped @0.0 floor 0.35 | 97.2 [96.8, 97.6] | 0.0 [-0.2, 0.3] | 91.8 [90.2, 93.2] | 1.00 [1.00, 1.01]x | 0.0 [0.0, 0.0] |
+| 500 | gnn capped @0.0 floor 0.5 | 97.2 [96.8, 97.6] | 0.0 [-0.2, 0.3] | 91.8 [90.2, 93.2] | 1.00 [1.00, 1.01]x | 0.0 [0.0, 0.0] |
+
+`suite_scale_n*_v1`, 50 scenarios per size, same scenarios for every method. gnn w capped decode at each fire threshold (and survival floor, default 0.1). shots vs hungarian = interceptors launched per scenario / hungarian's on the same scenario. 95% bootstrap cis, Δ paired per scenario. swept on the eval suites, so read it as a diagnostic, not a tuned result. model `20261029-213442-train`, trained on suite_train_v1 by `scripts/train.py` at `8bb2ef4`. made by `scripts/threshold.py` at `5cfa60f`.
+<!-- /threshold_floor -->
+
+</details>
+
 ## setup
 
 ```
