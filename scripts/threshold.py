@@ -30,6 +30,8 @@ class ThresholdConfig:
     # surviving them all is <= this. 0.1 is the policy default
     floors: list[float] = field(default_factory=lambda: [0.1])
     sizes: list[int] = field(default_factory=lambda: [10, 50, 100, 500])
+    # suite_scale = where the knobs were explored, suite_holdout = where a pick gets confirmed
+    suite_prefix: str = "suite_scale"
     reference: str = "hungarian"
     # at threshold 0 capped decode is just "rank edges by score, fill greedily", so the fair
     # question is whether the gnn's ranking beats a hand-written one
@@ -49,6 +51,7 @@ def main():
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--thresholds", type=float, nargs="+", default=None)
     ap.add_argument("--floors", type=float, nargs="+", default=None)
+    ap.add_argument("--suite-prefix", default=None, help="e.g. suite_holdout")
     ap.add_argument(
         "--tag", default="", help="writes threshold_<tag>.md + readme block, for a second model"
     )
@@ -58,6 +61,8 @@ def main():
         cfg.thresholds = args.thresholds
     if args.floors:
         cfg.floors = args.floors
+    if args.suite_prefix:
+        cfg.suite_prefix = args.suite_prefix
     model_commit = json.loads((Path(cfg.model).parent / "meta.json").read_text())["git_commit"]
     tcfg = yaml.safe_load((Path(cfg.model).parent / "config.yaml").read_text())
     # older runs had a single `suite`
@@ -77,7 +82,7 @@ def main():
     for n in cfg.sizes:
         print(f"n={n}", flush=True)
         methods = [cfg.reference, *cfg.others, *names]
-        rows += evaluate(f"suite_scale_n{n}_v1", methods, jobs=args.jobs, limit=args.limit)
+        rows += evaluate(f"{cfg.suite_prefix}_n{n}_v1", methods, jobs=args.jobs, limit=args.limit)
     write_csv(rows, out / "per_scenario.csv")
 
     lines = [
@@ -108,12 +113,16 @@ def main():
     commit = json.loads((out / "meta.json").read_text())["git_commit"]
     lines += [
         "",
-        f"`suite_scale_n*_v1`, {n_scn} scenarios per size, same scenarios for every method. "
+        f"`{cfg.suite_prefix}_n*_v1`, {n_scn} scenarios per size, same scenarios for every method. "
         "gnn w capped decode at each fire threshold (and survival floor, default 0.1). shots vs "
         "hungarian = interceptors launched per scenario / hungarian's on the same scenario. 95% "
         "bootstrap cis, Δ paired per scenario. "
-        "swept on the eval suites, so read it as a diagnostic, not a tuned result. "
-        f"model `{Path(cfg.model).parent.name}`, trained on {', '.join(train_suites)} by "
+        + (
+            "swept on the eval suites, so read it as a diagnostic, not a tuned result. "
+            if cfg.suite_prefix == "suite_scale"
+            else "held-out suites, never used to pick a knob. "
+        )
+        + f"model `{Path(cfg.model).parent.name}`, trained on {', '.join(train_suites)} by "
         f"`scripts/train.py` at `{model_commit[:7]}`. made by `scripts/threshold.py` at "
         f"`{commit[:7]}`.",
     ]
