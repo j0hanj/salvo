@@ -149,3 +149,19 @@ next: the gnn now ties the centralized baselines once decode forces one shooter 
 the setup to carry into phase 4 (decentralized, lossy comms), where hungarian / milp need a
 central node and the gnn doesn't. before that: confirm on a held-out suite, and check whether a
 floor that allows doubling up on high-value threats beats a flat one.
+
+## 2026-11-14: does threshold 0 + floor 0.35 hold on suites it wasn't picked on?
+ran: `scripts/threshold.py --thresholds 0.5 0 --floors 0.1 0.35 --suite-prefix suite_holdout
+--tag holdout` at `da49305` (run `results/20261114-214338-threshold`), 5-10 threat bce model
+(`results/20261029-213442-train`, trained at `8bb2ef4`), on suite_holdout_n{10,50,100,500}_v1
+(added in `1f375ca`: copies of the scaling suites w fresh seeds), 50 scenarios
+each. table in the readme and `docs/tables/threshold_holdout.md`.
+result: Δ value vs hungarian, threshold 0 + floor 0.35: 10 threats -0.8 [-3.1, 0.7], 50 0.4
+[-0.2, 1.2], 100 0.3 [-0.1, 0.8], 500 -0.2 [-0.6, 0.1]; shots 1.00x at every size. threats stopped
+at 500: 92.6 [91.2, 93.9] vs hungarian 92.1. default decode (0.5 / 0.1) at 500: -9.4 [-10.7, -8.2].
+floor 0.35 at threshold 0.5: -9.8 [-11.1, -8.7] at 500. threshold 0 at floor 0.1: -1.8 [-2.1,
+-1.4] at 500, 1.18x shots. at 10 threats floor 0.1 has the higher point estimate (1.0 vs -0.8),
+cis overlap. greedy-value at 500: -0.1 [-0.3, 0.1].
+conclusion:
+next: lock threshold 0 + floor 0.35 as the gnn's decode going into phase 4 (decentralized, lossy
+comms), where hungarian / milp need a central node and the gnn doesn't.

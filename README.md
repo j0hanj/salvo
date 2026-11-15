@@ -385,6 +385,51 @@ no central solver to run hungarian.
 
 </details>
 
+### it holds up on held-out suites
+
+threshold 0 and floor 0.35 were picked on the scaling suites, so they're rechecked on
+`suite_holdout_n{10,50,100,500}_v1`: same generator, fresh seeds, never used to pick anything
+(`scripts/threshold.py --thresholds 0.5 0 --floors 0.1 0.35 --suite-prefix suite_holdout --tag
+holdout`). Δ value vs hungarian w threshold 0 + floor 0.35: -0.8 [-3.1, 0.7] at 10 threats, 0.4
+[-0.2, 1.2] at 50, 0.3 [-0.1, 0.8] at 100, -0.2 [-0.6, 0.1] at 500, all 1.00x hungarian's shots.
+both knobs matter: the floor alone at threshold 0.5 is still -9.8 at 500, and threshold 0 alone
+w the default floor is -1.8 and fires 1.18x the shots.
+
+<details><summary>held-out table</summary>
+
+<!-- threshold_holdout -->
+| threats | method | value defended % | Δ value vs hungarian | threats stopped % | shots vs hungarian | targeted threats w 3+ shooters % |
+|---|---|---|---|---|---|---|
+| 10 | hungarian | 93.7 [90.3, 96.7] | — | 91.6 [88.6, 94.4] | 1.00 [1.00, 1.00]x | 0.0 [0.0, 0.0] |
+| 10 | greedy-value | 94.0 [90.6, 96.8] | 0.2 [-0.3, 0.8] | 92.2 [89.4, 94.8] | 0.99 [0.99, 1.00]x | 0.0 [0.0, 0.0] |
+| 10 | gnn capped @0.5 floor 0.1 | 94.9 [92.3, 97.2] | 1.1 [-1.1, 3.4] | 92.4 [89.6, 94.8] | 1.07 [1.04, 1.09]x | 0.0 [0.0, 0.0] |
+| 10 | gnn capped @0.5 floor 0.35 | 93.0 [89.0, 96.4] | -0.8 [-3.0, 0.6] | 91.8 [89.0, 94.4] | 1.00 [0.99, 1.01]x | 0.0 [0.0, 0.0] |
+| 10 | gnn capped @0.0 floor 0.1 | 94.7 [92.1, 97.0] | 1.0 [-1.3, 3.3] | 92.2 [89.4, 94.8] | 1.06 [1.04, 1.09]x | 0.0 [0.0, 0.0] |
+| 10 | gnn capped @0.0 floor 0.35 | 93.0 [89.1, 96.3] | -0.8 [-3.1, 0.7] | 91.8 [89.0, 94.4] | 1.00 [0.99, 1.01]x | 0.0 [0.0, 0.0] |
+| 50 | hungarian | 96.3 [95.4, 97.0] | — | 90.6 [89.1, 92.0] | 1.00 [1.00, 1.00]x | 0.0 [0.0, 0.0] |
+| 50 | greedy-value | 96.7 [96.1, 97.3] | 0.5 [-0.1, 1.1] | 90.9 [89.4, 92.4] | 1.00 [1.00, 1.01]x | 0.0 [0.0, 0.0] |
+| 50 | gnn capped @0.5 floor 0.1 | 93.5 [92.1, 94.9] | -2.7 [-4.1, -1.4] | 83.3 [80.6, 86.1] | 1.07 [1.05, 1.10]x | 0.0 [0.0, 0.0] |
+| 50 | gnn capped @0.5 floor 0.35 | 94.9 [93.7, 96.0] | -1.4 [-2.5, -0.3] | 86.0 [83.4, 88.6] | 0.96 [0.94, 0.98]x | 0.0 [0.0, 0.0] |
+| 50 | gnn capped @0.0 floor 0.1 | 95.5 [94.7, 96.3] | -0.7 [-1.6, 0.2] | 87.2 [85.4, 89.0] | 1.12 [1.10, 1.13]x | 0.0 [0.0, 0.0] |
+| 50 | gnn capped @0.0 floor 0.35 | 96.7 [96.0, 97.3] | 0.4 [-0.2, 1.2] | 91.2 [89.9, 92.5] | 1.00 [1.00, 1.01]x | 0.0 [0.0, 0.0] |
+| 100 | hungarian | 96.4 [95.5, 97.2] | — | 90.2 [88.1, 92.2] | 1.00 [1.00, 1.00]x | 0.0 [0.0, 0.0] |
+| 100 | greedy-value | 96.3 [95.3, 97.2] | -0.1 [-0.6, 0.4] | 90.2 [87.7, 92.4] | 1.00 [0.99, 1.00]x | 0.0 [0.0, 0.0] |
+| 100 | gnn capped @0.5 floor 0.1 | 90.5 [87.8, 92.9] | -5.9 [-8.1, -3.9] | 76.4 [71.5, 81.0] | 1.03 [0.98, 1.08]x | 0.0 [0.0, 0.0] |
+| 100 | gnn capped @0.5 floor 0.35 | 91.7 [89.3, 93.8] | -4.7 [-6.7, -2.9] | 78.7 [74.0, 83.1] | 0.88 [0.84, 0.91]x | 0.0 [0.0, 0.0] |
+| 100 | gnn capped @0.0 floor 0.1 | 95.5 [94.5, 96.4] | -0.9 [-1.5, -0.3] | 86.0 [83.5, 88.4] | 1.13 [1.11, 1.15]x | 0.0 [0.0, 0.0] |
+| 100 | gnn capped @0.0 floor 0.35 | 96.7 [95.9, 97.5] | 0.3 [-0.1, 0.8] | 90.9 [88.7, 92.9] | 1.00 [1.00, 1.01]x | 0.0 [0.0, 0.0] |
+| 500 | hungarian | 97.5 [97.1, 97.9] | — | 92.1 [90.6, 93.5] | 1.00 [1.00, 1.00]x | 0.0 [0.0, 0.0] |
+| 500 | greedy-value | 97.4 [96.9, 97.8] | -0.1 [-0.3, 0.1] | 92.2 [90.8, 93.6] | 1.00 [1.00, 1.00]x | 0.0 [0.0, 0.0] |
+| 500 | gnn capped @0.5 floor 0.1 | 88.1 [86.7, 89.4] | -9.4 [-10.7, -8.2] | 65.8 [63.2, 68.1] | 0.92 [0.89, 0.95]x | 0.0 [0.0, 0.0] |
+| 500 | gnn capped @0.5 floor 0.35 | 87.6 [86.3, 88.8] | -9.8 [-11.1, -8.7] | 64.6 [62.4, 66.6] | 0.70 [0.68, 0.72]x | 0.0 [0.0, 0.0] |
+| 500 | gnn capped @0.0 floor 0.1 | 95.7 [95.1, 96.3] | -1.8 [-2.1, -1.4] | 85.6 [83.8, 87.3] | 1.18 [1.16, 1.19]x | 0.0 [0.0, 0.0] |
+| 500 | gnn capped @0.0 floor 0.35 | 97.3 [96.8, 97.8] | -0.2 [-0.6, 0.1] | 92.6 [91.2, 93.9] | 1.00 [1.00, 1.01]x | 0.0 [0.0, 0.0] |
+
+`suite_holdout_n*_v1`, 50 scenarios per size, same scenarios for every method. gnn w capped decode at each fire threshold (and survival floor, default 0.1). shots vs hungarian = interceptors launched per scenario / hungarian's on the same scenario. 95% bootstrap cis, Δ paired per scenario. held-out suites, never used to pick a knob. model `20261029-213442-train`, trained on suite_train_v1 by `scripts/train.py` at `8bb2ef4`. made by `scripts/threshold.py` at `da49305`.
+<!-- /threshold_holdout -->
+
+</details>
+
 ## setup
 
 ```
