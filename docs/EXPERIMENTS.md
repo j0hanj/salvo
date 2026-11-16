@@ -184,3 +184,22 @@ conclusion:
 next: independent loss is the friendly case since max-consensus routes around dropped messages.
 add bursty / correlated loss (gilbert-elliott per link, or whole nodes going dark for a few
 ticks), then get the gnn running on local views so it can join the sweep.
+
+## 2026-11-16: does bursty link loss hurt cbba more than independent loss?
+ran: `scripts/burst.py` at `1bab701` (run `results/20261116-092031-burst`). cbba, 10 rounds per
+tick, suite_scale_n100_v1 (50 scenarios). independent per-message loss vs gilbert-elliott links
+(`sim/comms.py`, one chain per directed link, stepped once per 1 s replan) at long-run loss 50 /
+90 / 95%, mean burst 10 / 20 / 50 ticks where feasible. table in the readme and
+`docs/tables/burst.md`.
+result: Δ value vs hungarian. 50%: independent -0.0 [-0.4, 0.4], bursty 0.0 to 0.1 at every
+burst length. 90%: independent -0.0 [-0.7, 0.5], bursty -0.2 [-0.5, 0.2] (10 ticks), -0.4 [-0.9,
+-0.0] (20), -0.5 [-1.0, -0.0] (50). 95%: independent -0.5 [-1.0, 0.0], 1.07 shooters per targeted
+threat; bursty -2.9 [-3.7, -2.3] (20 ticks) and -3.0 [-3.7, -2.4] (50), 1.50 / 1.51 shooters,
+threats stopped 81.8 / 81.5 vs 92.1 for hungarian.
+note: a first run at `95e6498` used 90% loss w 1- and 5-tick bursts. the chain can't hit that
+(mean good spell would be under a tick) and clipped p(good -> bad) to 1, so those rows actually
+ran at ~50% / ~83% loss. that run was thrown out, `6948db4` makes such combos an error instead.
+conclusion:
+next: whole nodes going dark (an effector hears nothing and nobody hears it) and spatially
+correlated jamming are still untested. and the gnn still needs a local-view version to join any
+of these sweeps.

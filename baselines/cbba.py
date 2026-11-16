@@ -16,6 +16,7 @@ this for the fully connected case), which is what the tests check.
 import numpy as np
 
 from baselines.common import shot_value
+from sim.comms import GilbertElliott
 from sim.engine import Obs
 
 
@@ -107,4 +108,28 @@ class LossyCBBA:
         if v.size == 0 or not np.isfinite(v).any():
             return []
         x, _ = auction(v, max_rounds=self.rounds, p_drop=self.p_drop, rng=self.rng)
+        return [(int(e), int(j)) for e, j in enumerate(x) if j >= 0]
+
+
+class BurstyCBBA:
+    """cbba over gilbert-elliott links (`sim.comms`): a link that's down is down for every round
+    of this tick, so talking longer can only route around it through other effectors. the link
+    chain steps once per replan, whether or not there's anything to decide."""
+
+    def __init__(self, loss: float, burst: float, rounds: int = 10, cost_weight: float = 0.0):
+        self.loss, self.burst, self.rounds, self.cost_weight = loss, burst, rounds, cost_weight
+        self.reset(0)
+
+    def reset(self, seed: int) -> None:
+        self.rng = np.random.default_rng(seed)
+        self.links = None  # built on first call, once the effector count is known
+
+    def __call__(self, obs: Obs) -> list[tuple[int, int]]:
+        if self.links is None:
+            self.links = GilbertElliott(len(obs.eff_pos), self.loss, self.burst, self.rng)
+        up = self.links.step()
+        v = shot_value(obs, self.cost_weight)
+        if v.size == 0 or not np.isfinite(v).any():
+            return []
+        x, _ = auction(v, adj=up, max_rounds=self.rounds)
         return [(int(e), int(j)) for e, j in enumerate(x) if j >= 0]
