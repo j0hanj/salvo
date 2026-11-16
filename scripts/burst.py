@@ -22,8 +22,9 @@ from scripts.compare import splice_readme
 @dataclass
 class BurstConfig:
     suite: str = "suite_scale_n100_v1"
-    losses: list[float] = field(default_factory=lambda: [0.5, 0.9])
-    bursts: list[float] = field(default_factory=lambda: [1.0, 5.0, 20.0])  # mean ticks down
+    losses: list[float] = field(default_factory=lambda: [0.5, 0.9, 0.95])
+    # mean ticks down. a combo only runs if the chain can actually hit that loss, see sim/comms.py
+    bursts: list[float] = field(default_factory=lambda: [10.0, 20.0, 50.0])
     rounds: int = 10
     reference: str = "hungarian"
     n_boot: int = 10_000
@@ -47,6 +48,8 @@ def main():
     for p in cfg.losses:
         names[f"cbba@{p}/{cfg.rounds}"] = (p, f"independent per message, {100 * p:g}% lost")
         for b in cfg.bursts:
+            if b < p / (1 - p) - 1e-9:
+                continue  # mean good spell would be under a tick
             names[f"cbba-burst@{p}/{b}"] = (p, f"bursty links, {100 * p:g}% down, ~{b:g} ticks")
     rows = evaluate(cfg.suite, [cfg.reference, *names], jobs=args.jobs, limit=args.limit)
     write_csv(rows, out / "per_scenario.csv")
