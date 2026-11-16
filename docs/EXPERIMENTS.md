@@ -165,3 +165,22 @@ cis overlap. greedy-value at 500: -0.1 [-0.3, 0.1].
 conclusion:
 next: lock threshold 0 + floor 0.35 as the gnn's decode going into phase 4 (decentralized, lossy
 comms), where hungarian / milp need a central node and the gnn doesn't.
+
+## 2026-11-16: how does cbba degrade under independent message loss?
+ran: `scripts/loss.py` at `e5509be` (run `results/20261116-001149-loss`). cbba w bundle length 1
+(`baselines/cbba.py`), every message lost independently w p in {0, 0.5, 0.9, 0.99, 1.0}, rounds per
+tick in {1, 3, 10}, then each effector fires on whatever it holds. hungarian (central, perfect
+info) as reference. suite_small_v2 (200 scenarios) and suite_scale_n100_v1 (50). table in the
+readme and `docs/tables/loss.md`.
+result: suite_scale_n100_v1, Δ value vs hungarian: 10 rounds: 0.1 [-0.3, 0.4] at 0%, -0.0 [-0.4,
+0.4] at 50%, -0.0 [-0.7, 0.5] at 90%, -4.8 [-5.7, -4.0] at 99%. 3 rounds: -0.9 at 0%, -2.3 [-3.3,
+-1.5] at 90%, -10.5 at 99%. 1 round: -5.6 [-6.8, -4.5] at 0% (1.00 shots per threat vs 1.23 for
+hungarian), -9.2 at 90%. 100% loss (no comms, every round count): -13.5 [-15.1, -12.0], 2.48
+shooters per targeted threat, threats stopped 60.0 vs 92.1. suite_small_v2: every variant within
+0.7 of hungarian, max 1.10 shooters per targeted threat. sanity check before the sweep (one-off,
+first 5 scenarios of n100, not in a logged run): ~5.4 free effectors per tick w a legal shot, 82%
+of those ticks have 2+, so there is contention to coordinate.
+conclusion:
+next: independent loss is the friendly case since max-consensus routes around dropped messages.
+add bursty / correlated loss (gilbert-elliott per link, or whole nodes going dark for a few
+ticks), then get the gnn running on local views so it can join the sweep.
