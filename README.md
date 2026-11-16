@@ -38,7 +38,7 @@ scenario suites, reported w confidence intervals.
 - [x] 0. repo + tooling
 - [x] 1. sim, scenario generator, versioned eval suites
 - [x] 2. baselines + eval harness
-- [x] 3. learned centralized policy + scaling study (negative result, see below)
+- [x] 3. learned centralized policy + scaling study (zero-shot it fell apart; w a fixed decode it ties hungarian up to 500 threats, see below)
 - [ ] 4. decentralized in sim: CBBA vs GNN under simulated loss
 - [ ] 5. raspberry pi deployment
 - [ ] 6. jamming sweeps + write-up

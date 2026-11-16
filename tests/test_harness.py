@@ -67,3 +67,11 @@ def test_gnn_threshold_override(tmp_path):
     assert resolve(f"gnn-capped@0/0.4:{path}").survival_floor == 0.4
     r = run_one(load_suite("suite_small_v2"), 0, f"gnn-capped@0:{path}")
     assert r["stopped"] + r["leaked"] + r["unresolved"] == r["n_threats"]
+
+
+def test_cbba_row_matches_greedy_value():
+    # fully connected cbba picks what greedy-value picks, so whole episodes come out the same
+    suite = load_suite("suite_small_v2")
+    keys = ["stopped", "leaked", "shots", "cost"]
+    c, g = run_one(suite, 0, "cbba"), run_one(suite, 0, "greedy-value")
+    assert [c[k] for k in keys] == [g[k] for k in keys]
