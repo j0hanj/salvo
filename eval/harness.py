@@ -13,7 +13,7 @@ from multiprocessing import Pool
 
 import numpy as np
 
-from baselines.cbba import LossyCBBA, cbba
+from baselines.cbba import BurstyCBBA, LossyCBBA, cbba
 from baselines.common import feasible
 from baselines.greedy import nearest, value
 from baselines.hungarian import hungarian
@@ -35,7 +35,11 @@ def resolve(method: str):
     """baseline name, or "gnn:<path to model.pt>" / "gnn-capped:<path>" for a trained policy.
     "gnn@0.3:<path>" / "gnn-capped@0.3:<path>" overrides the fire threshold (default 0.5).
     "gnn-capped@0.3/0.4:<path>" also overrides capped decode's survival floor (default 0.1).
-    "cbba@0.3/10" = cbba w 30% of messages lost and 10 rounds of talking per tick."""
+    "cbba@0.3/10" = cbba w 30% of messages lost and 10 rounds of talking per tick.
+    "cbba-burst@0.3/5" = cbba over bursty links, down 30% of ticks in spells of ~5 ticks."""
+    if method.startswith("cbba-burst@"):
+        loss, _, burst = method.split("@", 1)[1].partition("/")
+        return BurstyCBBA(float(loss), float(burst) if burst else 5.0)
     if method.startswith("cbba@"):
         p, _, rounds = method.split("@", 1)[1].partition("/")
         return LossyCBBA(float(p), int(rounds) if rounds else 10)
