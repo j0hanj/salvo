@@ -19,12 +19,25 @@ from baselines.common import shot_value
 from sim.engine import Obs
 
 
-def auction(v: np.ndarray, adj: np.ndarray | None = None, max_rounds: int = 1000):
+def auction(
+    v: np.ndarray,
+    adj: np.ndarray | None = None,
+    max_rounds: int = 1000,
+    p_drop: float = 0.0,
+    rng: np.random.Generator | None = None,
+):
     """v: (m, n) bid of agent e on task j, -inf / <= 0 = won't bid. adj: (m, m) bool, who hears
     whom (self loop implied), default everyone. returns (task per agent or -1, rounds used).
 
+    p_drop: chance each message is lost, per link per round. w loss an agent can't tell "nothing
+    changed" from "i heard nothing", so it runs the full max_rounds budget and everyone acts on
+    whatever they hold at the end. conflicts (two agents on one threat) are possible then, which
+    is the point: that's the degradation phase 4 measures.
+
     ties on bids break toward the lower agent id, so the outcome doesn't depend on message order.
     """
+    if p_drop > 0 and rng is None:
+        raise ValueError("p_drop > 0 needs an rng, so runs stay reproducible")
     m, n = v.shape
     if adj is None:
         adj = np.ones((m, m), dtype=bool)
@@ -43,15 +56,19 @@ def auction(v: np.ndarray, adj: np.ndarray | None = None, max_rounds: int = 1000
                 j = int(np.argmax(np.where(ok, v[i], -np.inf)))
                 x[i], y[i, j], z[i, j] = j, v[i, j], i
                 changed = True
-        # 2. consensus: everyone takes the best (bid, lowest id) per task over what neighbors said
-        y_new, z_new = y.copy(), z.copy()
+        # 2. consensus: everyone takes the best (bid, lowest id) per task over what it heard
+        heard = adj
+        if p_drop > 0:
+            # each directed message independently lost; you always hear yourself
+            heard = adj & ((rng.random((m, m)) >= p_drop) | np.eye(m, dtype=bool))
+        y_new, z_new = np.empty_like(y), np.empty_like(z)
         for i in range(m):
-            for k in np.flatnonzero(adj[i]):
-                better = (y[k] > y_new[i]) | (
-                    (y[k] == y_new[i]) & (z[k] >= 0) & ((z_new[i] < 0) | (z[k] < z_new[i]))
-                )
-                y_new[i] = np.where(better, y[k], y_new[i])
-                z_new[i] = np.where(better, z[k], z_new[i])
+            yk, zk = y[heard[i]], z[heard[i]]
+            best = yk.max(0)
+            tied = (yk == best) & (zk >= 0)
+            zb = np.where(tied, zk, m).min(0)
+            y_new[i] = best
+            z_new[i] = np.where(zb < m, zb, -1)
         changed |= not (np.array_equal(y_new, y) and np.array_equal(z_new, z))
         y, z = y_new, z_new
         # 3. outbid agents drop their task and bid again next round
@@ -59,7 +76,7 @@ def auction(v: np.ndarray, adj: np.ndarray | None = None, max_rounds: int = 1000
             if z[i, x[i]] != i:
                 x[i] = -1
                 changed = True
-        if not changed:
+        if not changed and p_drop == 0:
             return x, rnd
     return x, max_rounds
 

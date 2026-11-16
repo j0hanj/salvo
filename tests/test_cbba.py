@@ -59,3 +59,25 @@ def test_policy_matches_greedy_value_in_sim():
 
     run(sc, suite.cfg.sim, suite.cfg.types, both)
     assert seen and all(seen)
+
+
+def test_total_loss_means_everyone_picks_alone():
+    # p_drop=1: nobody hears anybody, so each agent keeps its own favorite, conflicts and all
+    rng = np.random.default_rng(2)
+    v = random_bids(rng, 8, 5, p_legal=1.0)
+    x, rounds = auction(v, max_rounds=20, p_drop=1.0, rng=np.random.default_rng(0))
+    assert rounds == 20
+    assert x.tolist() == np.argmax(v, axis=1).tolist()
+
+
+def test_loss_is_reproducible_and_needs_an_rng():
+    v = random_bids(np.random.default_rng(3), 10, 10)
+    a, _ = auction(v, max_rounds=15, p_drop=0.3, rng=np.random.default_rng(7))
+    b, _ = auction(v, max_rounds=15, p_drop=0.3, rng=np.random.default_rng(7))
+    assert a.tolist() == b.tolist()
+    try:
+        auction(v, p_drop=0.3)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("expected a ValueError w/o an rng")
