@@ -13,6 +13,7 @@ from multiprocessing import Pool
 
 import numpy as np
 
+from baselines.cbba import cbba
 from baselines.common import feasible
 from baselines.greedy import nearest, value
 from baselines.hungarian import hungarian
@@ -25,6 +26,7 @@ METHODS = {
     "greedy-value": value,
     "hungarian": hungarian,
     "milp": milp,
+    "cbba": cbba,
 }
 
 
