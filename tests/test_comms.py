@@ -26,8 +26,22 @@ def test_long_run_loss_and_burst_length():
 def test_no_loss_and_self_links():
     down = run_chain(0.0, 5.0, ticks=50)
     assert not down.any()
-    down = run_chain(0.9, 5.0, ticks=50)
+    down = run_chain(0.9, 10.0, ticks=50)
     assert not down[:, np.arange(20), np.arange(20)].any()
+
+
+def test_rejects_loss_burst_combos_it_cant_hit():
+    # 90% loss w 5-tick bursts would need p(good -> bad) = 1.8. used to get clipped to 1, which
+    # quietly ran ~83% loss instead
+    for loss, burst in [(0.9, 5.0), (0.9, 1.0), (0.99, 20.0)]:
+        try:
+            GilbertElliott(4, loss, burst, np.random.default_rng(0))
+        except ValueError:
+            continue
+        raise AssertionError(f"expected ValueError for loss={loss} burst={burst}")
+    # right at the edge is fine: good spells exactly 1 tick
+    down = run_chain(0.9, 9.0)
+    assert abs(down[:, ~np.eye(20, dtype=bool)].mean() - 0.9) < 0.03
 
 
 def test_reproducible():
