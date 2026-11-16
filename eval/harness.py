@@ -13,7 +13,7 @@ from multiprocessing import Pool
 
 import numpy as np
 
-from baselines.cbba import cbba
+from baselines.cbba import LossyCBBA, cbba
 from baselines.common import feasible
 from baselines.greedy import nearest, value
 from baselines.hungarian import hungarian
@@ -34,7 +34,11 @@ METHODS = {
 def resolve(method: str):
     """baseline name, or "gnn:<path to model.pt>" / "gnn-capped:<path>" for a trained policy.
     "gnn@0.3:<path>" / "gnn-capped@0.3:<path>" overrides the fire threshold (default 0.5).
-    "gnn-capped@0.3/0.4:<path>" also overrides capped decode's survival floor (default 0.1)."""
+    "gnn-capped@0.3/0.4:<path>" also overrides capped decode's survival floor (default 0.1).
+    "cbba@0.3/10" = cbba w 30% of messages lost and 10 rounds of talking per tick."""
+    if method.startswith("cbba@"):
+        p, _, rounds = method.split("@", 1)[1].partition("/")
+        return LossyCBBA(float(p), int(rounds) if rounds else 10)
     if method.startswith(("gnn:", "gnn-capped:", "gnn@", "gnn-capped@")):
         # imported here so the baselines don't need torch
         import torch
@@ -85,7 +89,12 @@ class Timed:
 
 def run_one(suite, idx: int, method: str) -> dict:
     sc = suite.scenarios[idx]
-    policy = Timed(resolve(method))
+    base = resolve(method)
+    if hasattr(base, "reset"):
+        # policies w their own randomness (lossy comms) reseed per scenario, so results don't
+        # depend on run order or how scenarios got split across workers
+        base.reset(sc.seed)
+    policy = Timed(base)
     res = run(sc, suite.cfg.sim, suite.cfg.types, policy)
     stopped = res.status == KILLED
     n_stop = int(stopped.sum())

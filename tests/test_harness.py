@@ -75,3 +75,16 @@ def test_cbba_row_matches_greedy_value():
     keys = ["stopped", "leaked", "shots", "cost"]
     c, g = run_one(suite, 0, "cbba"), run_one(suite, 0, "greedy-value")
     assert [c[k] for k in keys] == [g[k] for k in keys]
+
+
+def test_lossy_cbba_reproducible_and_lossless_case():
+    suite = load_suite("suite_small_v2")
+    keys = ["stopped", "leaked", "shots", "cost"]
+    # no loss + enough rounds to converge = plain cbba
+    a, b = run_one(suite, 0, "cbba@0/50"), run_one(suite, 0, "cbba")
+    assert [a[k] for k in keys] == [b[k] for k in keys]
+    # w loss, reseeding per scenario means order doesn't matter: serial == parallel
+    m = ["cbba@0.5/5"]
+    serial = evaluate("suite_small_v2", m, jobs=1, limit=4)
+    par = evaluate("suite_small_v2", m, jobs=2, limit=4)
+    assert [[r[k] for k in keys] for r in serial] == [[r[k] for k in keys] for r in par]

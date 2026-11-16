@@ -88,3 +88,23 @@ def cbba(obs: Obs, cost_weight: float = 0.0) -> list[tuple[int, int]]:
         return []
     x, _ = auction(v)
     return [(int(e), int(j)) for e, j in enumerate(x) if j >= 0]
+
+
+class LossyCBBA:
+    """cbba where every message is dropped w prob p_drop, and agents get `rounds` rounds of
+    talking per tick before they have to act. the rng is reseeded per scenario (`reset`) so a
+    scenario's losses don't depend on which other scenarios ran before it in the same process."""
+
+    def __init__(self, p_drop: float, rounds: int = 10, cost_weight: float = 0.0):
+        self.p_drop, self.rounds, self.cost_weight = p_drop, rounds, cost_weight
+        self.rng = np.random.default_rng(0)
+
+    def reset(self, seed: int) -> None:
+        self.rng = np.random.default_rng(seed)
+
+    def __call__(self, obs: Obs) -> list[tuple[int, int]]:
+        v = shot_value(obs, self.cost_weight)
+        if v.size == 0 or not np.isfinite(v).any():
+            return []
+        x, _ = auction(v, max_rounds=self.rounds, p_drop=self.p_drop, rng=self.rng)
+        return [(int(e), int(j)) for e, j in enumerate(x) if j >= 0]

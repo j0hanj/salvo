@@ -430,6 +430,67 @@ w the default floor is -1.8 and fires 1.18x the shots.
 
 </details>
 
+## decentralized under message loss (phase 4, in progress)
+
+cbba (`baselines/cbba.py`) is the decentralized baseline: every effector bids on threats from its
+own scores, swaps winning bids w the effectors it hears, and drops anything it's been outbid on.
+w everyone connected it picks exactly what greedy-value picks. here every message is lost
+independently w some probability, effectors get a fixed number of talking rounds per tick, then
+fire on whatever they hold (`scripts/loss.py`).
+
+on 100-threat raids the round budget matters more than the loss rate. w 10 rounds per tick cbba
+shrugs off 90% loss (Δ value vs hungarian -0.0 [-0.7, 0.5]) because a winning bid only has to
+reach you through anyone who heard it. it breaks at 99% (-4.8 [-5.7, -4.0]) and w no comms at all
+it's -13.5 [-15.1, -12.0], 2.48 shooters per targeted threat. w 1 round it's -5.6 even w perfect
+comms: outbid effectors don't get another round to rebid, so they hold fire (1.00 shots per
+threat vs 1.23 for hungarian). on suite_small_v2 (2-3 effectors) nothing moves more than 0.7.
+
+independent per-message loss is the kind case. real jamming is bursty and hits whole links or
+nodes at once, which is next, along w the gnn running on only what each node hears.
+
+<details><summary>loss x rounds table</summary>
+
+<!-- loss -->
+| suite | method | threats stopped % | value defended % | Δ value vs hungarian | shooters per targeted threat | shots per threat |
+|---|---|---|---|---|---|---|
+| suite_small_v2 | hungarian | 80.6 [78.2, 83.1] | 87.1 [84.6, 89.4] | — | 1.00 [1.00, 1.00] | 1.12 [1.09, 1.15] |
+| suite_small_v2 | cbba, 1 round, 0% lost | 80.2 [77.8, 82.7] | 86.7 [84.3, 88.9] | -0.4 [-1.3, 0.7] | 1.00 [1.00, 1.00] | 1.12 [1.09, 1.15] |
+| suite_small_v2 | cbba, 1 round, 50% lost | 79.4 [76.9, 81.8] | 86.6 [84.3, 88.8] | -0.5 [-1.4, 0.6] | 1.04 [1.03, 1.05] | 1.14 [1.11, 1.17] |
+| suite_small_v2 | cbba, 1 round, 90% lost | 79.0 [76.5, 81.5] | 86.4 [84.1, 88.6] | -0.7 [-1.7, 0.5] | 1.09 [1.07, 1.11] | 1.17 [1.13, 1.20] |
+| suite_small_v2 | cbba, 1 round, 99% lost | 78.8 [76.3, 81.3] | 86.5 [84.2, 88.6] | -0.7 [-1.8, 0.6] | 1.10 [1.08, 1.12] | 1.17 [1.14, 1.20] |
+| suite_small_v2 | cbba, 1 round, 100% lost | 78.8 [76.3, 81.3] | 86.5 [84.2, 88.7] | -0.6 [-1.7, 0.7] | 1.10 [1.08, 1.13] | 1.17 [1.14, 1.21] |
+| suite_small_v2 | cbba, 3 rounds, 0% lost | 80.2 [77.7, 82.6] | 86.8 [84.3, 89.0] | -0.3 [-1.3, 0.8] | 1.00 [1.00, 1.00] | 1.12 [1.09, 1.15] |
+| suite_small_v2 | cbba, 3 rounds, 50% lost | 80.3 [77.9, 82.7] | 87.1 [84.7, 89.3] | 0.0 [-0.8, 1.0] | 1.01 [1.00, 1.01] | 1.12 [1.10, 1.15] |
+| suite_small_v2 | cbba, 3 rounds, 90% lost | 79.3 [76.9, 81.7] | 86.9 [84.5, 89.0] | -0.2 [-1.1, 0.9] | 1.06 [1.05, 1.08] | 1.15 [1.12, 1.18] |
+| suite_small_v2 | cbba, 3 rounds, 99% lost | 78.8 [76.3, 81.3] | 86.6 [84.3, 88.7] | -0.5 [-1.6, 0.7] | 1.09 [1.07, 1.12] | 1.17 [1.13, 1.20] |
+| suite_small_v2 | cbba, 3 rounds, 100% lost | 78.8 [76.3, 81.3] | 86.5 [84.2, 88.7] | -0.6 [-1.7, 0.7] | 1.10 [1.08, 1.13] | 1.17 [1.14, 1.21] |
+| suite_small_v2 | cbba, 10 rounds, 0% lost | 80.2 [77.7, 82.6] | 86.8 [84.3, 89.0] | -0.3 [-1.3, 0.8] | 1.00 [1.00, 1.00] | 1.12 [1.09, 1.15] |
+| suite_small_v2 | cbba, 10 rounds, 50% lost | 80.2 [77.7, 82.6] | 86.8 [84.3, 89.0] | -0.3 [-1.3, 0.8] | 1.00 [1.00, 1.00] | 1.12 [1.09, 1.15] |
+| suite_small_v2 | cbba, 10 rounds, 90% lost | 80.0 [77.5, 82.5] | 86.8 [84.5, 89.1] | -0.3 [-1.2, 0.9] | 1.02 [1.01, 1.03] | 1.13 [1.10, 1.16] |
+| suite_small_v2 | cbba, 10 rounds, 99% lost | 79.2 [76.7, 81.7] | 86.8 [84.4, 88.9] | -0.3 [-1.4, 0.9] | 1.08 [1.06, 1.10] | 1.16 [1.13, 1.19] |
+| suite_small_v2 | cbba, 10 rounds, 100% lost | 78.8 [76.3, 81.3] | 86.5 [84.2, 88.7] | -0.6 [-1.7, 0.7] | 1.10 [1.08, 1.13] | 1.17 [1.14, 1.21] |
+| suite_scale_n100_v1 | hungarian | 92.1 [90.4, 93.7] | 97.2 [96.5, 97.8] | — | 1.00 [1.00, 1.00] | 1.23 [1.21, 1.26] |
+| suite_scale_n100_v1 | cbba, 1 round, 0% lost | 75.4 [72.3, 78.3] | 91.6 [90.1, 93.0] | -5.6 [-6.8, -4.5] | 1.00 [1.00, 1.00] | 1.00 [0.96, 1.03] |
+| suite_scale_n100_v1 | cbba, 1 round, 50% lost | 74.3 [71.7, 76.7] | 91.3 [90.0, 92.6] | -5.9 [-6.8, -5.0] | 1.42 [1.40, 1.44] | 1.31 [1.27, 1.35] |
+| suite_scale_n100_v1 | cbba, 1 round, 90% lost | 66.9 [64.3, 69.4] | 88.0 [86.4, 89.4] | -9.2 [-10.5, -8.1] | 2.12 [2.07, 2.17] | 1.67 [1.62, 1.72] |
+| suite_scale_n100_v1 | cbba, 1 round, 99% lost | 61.1 [58.7, 63.4] | 84.2 [82.4, 86.1] | -13.0 [-14.6, -11.4] | 2.41 [2.34, 2.48] | 1.72 [1.67, 1.76] |
+| suite_scale_n100_v1 | cbba, 1 round, 100% lost | 60.0 [57.6, 62.3] | 83.7 [81.7, 85.5] | -13.5 [-15.1, -12.0] | 2.48 [2.41, 2.56] | 1.72 [1.67, 1.76] |
+| suite_scale_n100_v1 | cbba, 3 rounds, 0% lost | 90.5 [88.6, 92.3] | 96.3 [95.1, 97.3] | -0.9 [-1.8, -0.1] | 1.00 [1.00, 1.00] | 1.22 [1.19, 1.24] |
+| suite_scale_n100_v1 | cbba, 3 rounds, 50% lost | 89.6 [87.7, 91.5] | 96.5 [95.6, 97.3] | -0.7 [-1.4, -0.2] | 1.06 [1.06, 1.07] | 1.26 [1.24, 1.29] |
+| suite_scale_n100_v1 | cbba, 3 rounds, 90% lost | 85.4 [82.9, 87.7] | 94.9 [93.5, 96.1] | -2.3 [-3.3, -1.5] | 1.26 [1.24, 1.28] | 1.37 [1.34, 1.41] |
+| suite_scale_n100_v1 | cbba, 3 rounds, 99% lost | 64.8 [62.5, 67.2] | 86.7 [85.1, 88.2] | -10.5 [-11.7, -9.4] | 2.21 [2.17, 2.26] | 1.70 [1.65, 1.74] |
+| suite_scale_n100_v1 | cbba, 3 rounds, 100% lost | 60.0 [57.6, 62.3] | 83.7 [81.7, 85.5] | -13.5 [-15.1, -12.0] | 2.48 [2.41, 2.56] | 1.72 [1.67, 1.76] |
+| suite_scale_n100_v1 | cbba, 10 rounds, 0% lost | 92.1 [90.5, 93.5] | 97.3 [96.6, 97.8] | 0.1 [-0.3, 0.4] | 1.00 [1.00, 1.00] | 1.23 [1.21, 1.25] |
+| suite_scale_n100_v1 | cbba, 10 rounds, 50% lost | 91.9 [90.2, 93.5] | 97.2 [96.5, 97.8] | -0.0 [-0.4, 0.4] | 1.00 [1.00, 1.00] | 1.23 [1.21, 1.25] |
+| suite_scale_n100_v1 | cbba, 10 rounds, 90% lost | 91.8 [90.2, 93.4] | 97.2 [96.3, 97.9] | -0.0 [-0.7, 0.5] | 1.02 [1.01, 1.02] | 1.24 [1.22, 1.26] |
+| suite_scale_n100_v1 | cbba, 10 rounds, 99% lost | 76.9 [74.2, 79.5] | 92.4 [91.1, 93.6] | -4.8 [-5.7, -4.0] | 1.69 [1.65, 1.72] | 1.59 [1.55, 1.64] |
+| suite_scale_n100_v1 | cbba, 10 rounds, 100% lost | 60.0 [57.6, 62.3] | 83.7 [81.7, 85.5] | -13.5 [-15.1, -12.0] | 2.48 [2.41, 2.56] | 1.72 [1.67, 1.76] |
+
+scenarios per suite: suite_small_v2 200, suite_scale_n100_v1 50, same scenarios for every method. cbba gets the given rounds of message passing per tick, every message lost independently w the given prob, then each effector fires on whatever it holds. 100% lost = no comms at all, every effector takes its own favorite. hungarian is central w perfect info, the no-jamming ceiling. shooters per targeted threat > 1 = effectors that didn't hear they'd been outbid. 95% bootstrap cis, Δ paired per scenario. made by `scripts/loss.py` at `e5509be`.
+<!-- /loss -->
+
+</details>
+
 ## setup
 
 ```
