@@ -36,10 +36,12 @@ def resolve(method: str):
     "gnn@0.3:<path>" / "gnn-capped@0.3:<path>" overrides the fire threshold (default 0.5).
     "gnn-capped@0.3/0.4:<path>" also overrides capped decode's survival floor (default 0.1).
     "cbba@0.3/10" = cbba w 30% of messages lost and 10 rounds of talking per tick.
-    "cbba-burst@0.3/5" = cbba over bursty links, down 30% of ticks in spells of ~5 ticks."""
-    if method.startswith("cbba-burst@"):
+    "cbba-burst@0.3/5" = cbba over bursty links, down 30% of ticks in spells of ~5 ticks.
+    "cbba-node@0.3/5" = same but whole effectors go dark 30% of ticks, ~5 ticks at a time."""
+    if method.startswith(("cbba-burst@", "cbba-node@")):
         loss, _, burst = method.split("@", 1)[1].partition("/")
-        return BurstyCBBA(float(loss), float(burst) if burst else 5.0)
+        kind = "node" if method.startswith("cbba-node@") else "link"
+        return BurstyCBBA(float(loss), float(burst) if burst else 5.0, kind=kind)
     if method.startswith("cbba@"):
         p, _, rounds = method.split("@", 1)[1].partition("/")
         return LossyCBBA(float(p), int(rounds) if rounds else 10)

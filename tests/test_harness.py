@@ -96,7 +96,14 @@ def test_bursty_cbba_lossless_case_and_reproducible():
     a, b = run_one(suite, 0, "cbba-burst@0/5"), run_one(suite, 0, "cbba")
     assert [a[k] for k in keys] == [b[k] for k in keys]
     # link state is rebuilt per scenario, so a scenario's result doesn't depend on what ran first
-    m = ["cbba-burst@0.7/5"]
+    m = ["cbba-burst@0.7/5", "cbba-node@0.5/5"]
     serial = evaluate("suite_small_v2", m, jobs=1, limit=4)
     par = evaluate("suite_small_v2", m, jobs=2, limit=4)
     assert [[r[k] for k in keys] for r in serial] == [[r[k] for k in keys] for r in par]
+
+
+def test_node_outage_lossless_case():
+    suite = load_suite("suite_small_v2")
+    keys = ["stopped", "leaked", "shots", "cost"]
+    a, b = run_one(suite, 0, "cbba-node@0/5"), run_one(suite, 0, "cbba")
+    assert [a[k] for k in keys] == [b[k] for k in keys]
