@@ -47,3 +47,20 @@ def test_rejects_loss_burst_combos_it_cant_hit():
 def test_reproducible():
     a = run_chain(0.5, 3.0, ticks=30, seed=4)
     assert np.array_equal(a, run_chain(0.5, 3.0, ticks=30, seed=4))
+
+
+def test_node_outage_cuts_whole_nodes():
+    from sim.comms import NodeOutage
+
+    m = 12
+    no = NodeOutage(m, 0.3, 5.0, np.random.default_rng(0))
+    dark_frac = []
+    for _ in range(3000):
+        up = no.step()
+        off = up & ~np.eye(m, dtype=bool)
+        # lit nodes all hear each other, dark ones hear (and are heard by) nobody but themselves
+        assert up[np.ix_(~no.dark, ~no.dark)].all()
+        assert not off[no.dark].any() and not off[:, no.dark].any()
+        assert np.diag(up).all()
+        dark_frac.append(no.dark.mean())
+    assert abs(np.mean(dark_frac) - 0.3) < 0.03
