@@ -203,3 +203,19 @@ conclusion:
 next: whole nodes going dark (an effector hears nothing and nobody hears it) and spatially
 correlated jamming are still untested. and the gnn still needs a local-view version to join any
 of these sweeps.
+
+## 2026-11-17: node outages vs link loss at the same pairwise loss
+ran: `scripts/outage.py` at `b1916ef` (run `results/20261117-150444-outage`). cbba, 10 rounds per
+tick, suite_scale_n100_v1 (50 scenarios). node outages (`sim/comms.py` NodeOutage: a dark
+effector hears nobody, is heard by nobody, still fires on its own pick) at 10 / 30 / 50 / 70% of
+ticks, vs independent gilbert-elliott links at the matching pairwise loss 1 - (1 - down)^2 = 19 /
+51 / 75 / 91%. mean spell 20 ticks for both. table in the readme and `docs/tables/outage.md`.
+result: Δ value vs hungarian, node vs link: 10%: -0.4 [-0.8, 0.1] vs 0.1 [-0.3, 0.5]. 30%: -2.2
+[-2.8, -1.7] vs 0.0 [-0.3, 0.4]. 50%: -5.0 [-6.0, -4.1] vs 0.0 [-0.4, 0.4]. 70%: -8.4 [-9.5, -7.4]
+vs -0.7 [-1.1, -0.3]. shooters per targeted threat at 70%: 2.02 (nodes) vs 1.10 (links). no
+comms at all: -13.5 [-15.1, -12.0], 2.48. threats stopped at 70% dark: 68.9 vs 92.1 for hungarian.
+conclusion:
+next: node outages are the regime where cbba degrades smoothly and a lot, so that's where the
+decentralized gnn gets compared. needs: each effector builds its graph from what it can see /
+hear, decodes alone, and a dark node falls back to its own view. spatially correlated jamming
+(a jammer w a radius knocking out several nearby nodes together) is still untested.
