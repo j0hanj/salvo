@@ -16,7 +16,7 @@ this for the fully connected case), which is what the tests check.
 import numpy as np
 
 from baselines.common import shot_value
-from sim.comms import GilbertElliott
+from sim.comms import GilbertElliott, NodeOutage
 from sim.engine import Obs
 
 
@@ -112,12 +112,24 @@ class LossyCBBA:
 
 
 class BurstyCBBA:
-    """cbba over gilbert-elliott links (`sim.comms`): a link that's down is down for every round
-    of this tick, so talking longer can only route around it through other effectors. the link
-    chain steps once per replan, whether or not there's anything to decide."""
+    """cbba over bursty comms (`sim.comms`). kind="link": every directed link is its own
+    gilbert-elliott chain. kind="node": whole effectors go dark (NodeOutage), `loss` is then the
+    share of ticks a node is dark. either way a link that's down is down for every round of this
+    tick, so talking longer can only route around it through other effectors. the chain steps
+    once per replan, whether or not there's anything to decide."""
 
-    def __init__(self, loss: float, burst: float, rounds: int = 10, cost_weight: float = 0.0):
+    def __init__(
+        self,
+        loss: float,
+        burst: float,
+        rounds: int = 10,
+        cost_weight: float = 0.0,
+        kind: str = "link",
+    ):
+        if kind not in ("link", "node"):
+            raise ValueError(f"unknown kind {kind!r}")
         self.loss, self.burst, self.rounds, self.cost_weight = loss, burst, rounds, cost_weight
+        self.kind = kind
         self.reset(0)
 
     def reset(self, seed: int) -> None:
@@ -126,7 +138,8 @@ class BurstyCBBA:
 
     def __call__(self, obs: Obs) -> list[tuple[int, int]]:
         if self.links is None:
-            self.links = GilbertElliott(len(obs.eff_pos), self.loss, self.burst, self.rng)
+            model = GilbertElliott if self.kind == "link" else NodeOutage
+            self.links = model(len(obs.eff_pos), self.loss, self.burst, self.rng)
         up = self.links.step()
         v = shot_value(obs, self.cost_weight)
         if v.size == 0 or not np.isfinite(v).any():
