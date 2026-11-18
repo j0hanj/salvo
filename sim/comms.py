@@ -86,3 +86,34 @@ def flood(masks) -> np.ndarray:
     if knows is None:
         raise ValueError("need at least one round")
     return knows
+
+
+class Channel:
+    """one tick of comms for a decentralized method: `tick(m)` returns the per-round masks.
+
+    kind="full": everyone hears everyone. "iid": every message lost w prob `loss`, fresh each
+    round. "link": gilbert-elliott links, "node": NodeOutage; both step once per tick and hold
+    for every round of it. built lazily on the first tick, and for link / node it draws from the
+    rng in the same order as BurstyCBBA does, so the same seed gives both methods the same link
+    states."""
+
+    def __init__(self, kind: str = "full", loss: float = 0.0, burst: float = 1.0, rounds: int = 10):
+        if kind not in ("full", "iid", "link", "node"):
+            raise ValueError(f"unknown channel kind {kind!r}")
+        self.kind, self.loss, self.burst, self.rounds = kind, loss, burst, rounds
+        self.reset(0)
+
+    def reset(self, seed: int) -> None:
+        self.rng = np.random.default_rng(seed)
+        self.model = None
+
+    def tick(self, m: int) -> list[np.ndarray]:
+        eye = np.eye(m, dtype=bool)
+        if self.kind == "full":
+            return [np.ones((m, m), dtype=bool)] * self.rounds
+        if self.kind == "iid":
+            return [(self.rng.random((m, m)) >= self.loss) | eye for _ in range(self.rounds)]
+        if self.model is None:
+            cls = GilbertElliott if self.kind == "link" else NodeOutage
+            self.model = cls(m, self.loss, self.burst, self.rng)
+        return [self.model.step()] * self.rounds
