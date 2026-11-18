@@ -42,7 +42,7 @@ def main():
         cb = {dark_of(r["method"]) for r in at if r["method"].startswith("cbba-node@")}
         for d in sorted(cb):
 
-            def col(prefix, key, d=d):
+            def col(prefix, key, d=d, at=at):
                 return np.array(
                     [
                         100 * r[key]
