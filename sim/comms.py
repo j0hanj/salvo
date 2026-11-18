@@ -69,3 +69,20 @@ class NodeOutage:
         self.dark = np.where(self.dark, u >= self.p_recover, u < self.p_fail)
         lit = ~self.dark
         return (lit[:, None] & lit[None, :]) | np.eye(len(lit), dtype=bool)
+
+
+def flood(masks) -> np.ndarray:
+    """who knows about whom after relaying over a sequence of per-round masks. masks: iterable
+    of (m, m) bool, mask[i, k] = i hears k that round. everyone starts knowing only themselves;
+    each round you learn everything anyone you hear already knew. returns (m, m) bool,
+    knows[i, j] = j's state reached i. this is plain flooding, the same reach cbba's max-
+    consensus gets w the same rounds."""
+    knows = None
+    for h in masks:
+        h = np.asarray(h, dtype=bool)
+        if knows is None:
+            knows = np.eye(len(h), dtype=bool)
+        knows = knows | ((h.astype(np.int32) @ knows.astype(np.int32)) > 0)
+    if knows is None:
+        raise ValueError("need at least one round")
+    return knows

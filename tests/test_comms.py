@@ -64,3 +64,23 @@ def test_node_outage_cuts_whole_nodes():
         assert np.diag(up).all()
         dark_frac.append(no.dark.mean())
     assert abs(np.mean(dark_frac) - 0.3) < 0.03
+
+
+def test_flood_relays_over_rounds():
+    from sim.comms import flood
+
+    # line 0 - 1 - 2 - 3, both directions. k rounds reach k hops
+    m = 4
+    line = np.eye(m, dtype=bool) | np.eye(m, k=1, dtype=bool) | np.eye(m, k=-1, dtype=bool)
+    assert flood([line]).tolist() == line.tolist()
+    two = flood([line, line])
+    assert two[0, 2] and not two[0, 3]
+    assert flood([line] * 3).all()
+    # nobody hears anybody: you only know yourself
+    assert flood([np.eye(m, dtype=bool)] * 5).tolist() == np.eye(m, dtype=bool).tolist()
+    # order matters: a link that's up before your neighbor heard something doesn't carry it
+    a = np.eye(3, dtype=bool)
+    a[0, 1] = True  # round 1: 0 hears 1
+    b = np.eye(3, dtype=bool)
+    b[1, 2] = True  # round 2: 1 hears 2
+    assert not flood([a, b])[0, 2] and flood([b, a])[0, 2]
