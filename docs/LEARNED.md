@@ -83,3 +83,22 @@ with both fixes it's close to hungarian at 500 threats but still behind greedy-v
 hand-written ranking, while firing more shots. the per-edge bce loss gives scores that mean
 something at the training size and drift as the graph grows. mixed-size training or a per-effector
 ranking loss are the obvious next things to try.
+
+## running it decentralized (`learned/decentral.py`)
+
+same trained model, no central node. every tick, each effector:
+
+1. hears whoever it can over a few rounds of relaying (`sim/comms.py`: `Channel` gives the
+   per-round link masks, `flood` works out whose state reached whom).
+2. builds a graph out of every threat (shared sensor picture) plus itself and the effectors it
+   heard. everything else just isn't in its graph.
+3. runs the model + capped decode on that graph, same settings as centralized (threshold 0,
+   floor 0.35), and keeps only the shot it gave itself.
+
+w full comms every node builds the identical graph and makes the identical decode, so the union
+of picks is exactly the centralized policy. a node that heard nobody decodes a one-effector graph,
+i.e. takes its own best shot. nodes that heard the same set share one forward pass.
+
+what it doesn't do (yet): the model never trained on partial graphs, so a node doesn't know that
+effectors missing from its graph might still be shooting. a dark node fires blind, the same
+failure cbba has, which is why both fall off together as more nodes go dark (readme, phase 4).

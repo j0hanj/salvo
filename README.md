@@ -39,7 +39,7 @@ scenario suites, reported w confidence intervals.
 - [x] 1. sim, scenario generator, versioned eval suites
 - [x] 2. baselines + eval harness
 - [x] 3. learned centralized policy + scaling study (zero-shot it fell apart; w a fixed decode it ties hungarian up to 500 threats, see below)
-- [ ] 4. decentralized in sim: CBBA vs GNN under simulated loss
+- [ ] 4. decentralized in sim: CBBA vs GNN under simulated loss (in progress: cbba, loss models, decentral gnn done)
 - [ ] 5. raspberry pi deployment
 - [ ] 6. jamming sweeps + write-up
 
@@ -555,6 +555,79 @@ decentralized gnn has to beat.
 
 `suite_scale_n100_v1`, 50 scenarios, same scenarios for every method. cbba w 10 rounds of message passing per tick. node rows: each effector is dark the given share of ticks (hears nobody, heard by nobody, still fires on its own pick). link rows: every directed link independently down 1 - (1 - down)^2 of ticks, the same pairwise loss. both bursty w a mean spell of 20 ticks (1 s each). 95% bootstrap cis, Δ paired per scenario. made by `scripts/outage.py` at `b1916ef`.
 <!-- /outage -->
+
+</details>
+
+### the gnn, decentralized, vs cbba
+
+no central node: every effector builds its own graph from every threat plus the effectors it
+heard this tick, runs the phase 3 model + decode on that, and fires only its own pick
+(`learned/decentral.py`). w full comms every node builds the same graph, so it reproduces the
+centralized gnn exactly (tested). same scenarios and the same dark spells as cbba
+(`scripts/decentral.py`, 20-tick spells).
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/decentral_dark.png">
+  <img alt="value defended vs share of ticks effectors are jammed dark, cbba vs decentral gnn" src="docs/figures/decentral_light.png">
+</picture>
+
+both fall off the same cliff. paired gnn minus cbba (`scripts/decentral_pairs.py`): at 500
+threats the gnn is ahead at every dark level, by 0.6 to 1.2 pts of value and 2 to 3 pts of
+threats stopped, all cis above 0. at 100 threats it's a wash up to 30% dark and ahead by 1.0
+[0.5, 1.5] at 50%, 0.7 [0.1, 1.3] at 70%. the margin is small next to how much both lose: at 70%
+dark and 500 threats it's 76.8% vs 75.7% of value, against 97.2% for central hungarian. the
+bigger practical gap is time: at 500 threats w full comms cbba's 10 rounds take ~200 ms per
+tick in this python implementation vs ~24 ms for all gnn nodes together, and cbba still doesn't
+fully converge in 10 rounds there (-0.5 vs hungarian, gnn 0.0). both are unoptimized python on
+one thread, so treat latency as rough.
+
+<details><summary>decentral tables</summary>
+
+<!-- decentral -->
+| threats | nodes dark % | method | threats stopped % | value defended % | Δ value vs hungarian | shooters per targeted threat | decision latency ms |
+|---|---|---|---|---|---|---|---|
+| 100 | — (central) | hungarian | 92.1 [90.4, 93.7] | 97.2 [96.5, 97.8] | — | 1.00 [1.00, 1.00] | 0.11 [0.11, 0.11] |
+| 100 | 0 | cbba | 92.1 [90.5, 93.5] | 97.3 [96.6, 97.8] | 0.1 [-0.3, 0.4] | 1.00 [1.00, 1.00] | 2.05 [2.00, 2.10] |
+| 100 | 0 | gnn (decentral) | 92.0 [90.4, 93.5] | 97.0 [96.3, 97.6] | -0.2 [-0.8, 0.3] | 1.00 [1.00, 1.00] | 0.93 [0.89, 0.98] |
+| 100 | 10 | cbba | 89.9 [88.0, 91.8] | 96.8 [96.1, 97.5] | -0.4 [-0.8, 0.1] | 1.11 [1.10, 1.13] | 1.86 [1.81, 1.91] |
+| 100 | 10 | gnn (decentral) | 90.6 [88.9, 92.2] | 96.7 [95.7, 97.4] | -0.5 [-1.3, 0.0] | 1.11 [1.10, 1.12] | 1.09 [1.06, 1.13] |
+| 100 | 30 | cbba | 84.4 [82.2, 86.7] | 95.0 [94.0, 95.9] | -2.2 [-2.8, -1.7] | 1.37 [1.34, 1.39] | 1.53 [1.50, 1.57] |
+| 100 | 30 | gnn (decentral) | 85.1 [82.7, 87.4] | 95.3 [94.1, 96.3] | -1.9 [-2.7, -1.2] | 1.34 [1.32, 1.37] | 1.41 [1.36, 1.46] |
+| 100 | 50 | cbba | 77.0 [74.4, 79.5] | 92.2 [90.8, 93.4] | -5.0 [-6.0, -4.1] | 1.67 [1.64, 1.71] | 1.27 [1.24, 1.29] |
+| 100 | 50 | gnn (decentral) | 79.0 [76.4, 81.4] | 93.1 [91.9, 94.3] | -4.1 [-4.9, -3.3] | 1.63 [1.60, 1.66] | 1.76 [1.71, 1.81] |
+| 100 | 70 | cbba | 68.9 [66.6, 71.0] | 88.8 [87.3, 90.2] | -8.4 [-9.5, -7.4] | 2.02 [1.97, 2.06] | 1.07 [1.05, 1.10] |
+| 100 | 70 | gnn (decentral) | 70.5 [68.3, 72.5] | 89.5 [88.2, 90.7] | -7.7 [-8.6, -6.8] | 1.96 [1.92, 2.00] | 2.05 [2.00, 2.11] |
+| 500 | — (central) | hungarian | 91.2 [89.7, 92.7] | 97.2 [96.8, 97.6] | — | 1.00 [1.00, 1.00] | 2.04 [2.03, 2.06] |
+| 500 | 0 | cbba | 89.0 [86.9, 90.9] | 96.6 [96.1, 97.2] | -0.5 [-0.8, -0.3] | 1.00 [1.00, 1.00] | 198.42 [194.60, 202.19] |
+| 500 | 0 | gnn (decentral) | 91.8 [90.2, 93.2] | 97.2 [96.8, 97.6] | 0.0 [-0.2, 0.3] | 1.00 [1.00, 1.00] | 23.62 [23.40, 23.85] |
+| 500 | 10 | cbba | 86.6 [84.2, 88.8] | 96.1 [95.4, 96.8] | -1.0 [-1.4, -0.7] | 1.15 [1.14, 1.16] | 168.47 [163.74, 173.54] |
+| 500 | 10 | gnn (decentral) | 89.2 [87.4, 91.0] | 96.8 [96.3, 97.3] | -0.4 [-0.6, -0.2] | 1.14 [1.13, 1.15] | 25.14 [24.87, 25.44] |
+| 500 | 30 | cbba | 78.2 [75.7, 80.6] | 93.2 [92.3, 94.1] | -3.9 [-4.5, -3.3] | 1.50 [1.48, 1.51] | 116.42 [110.31, 123.05] |
+| 500 | 30 | gnn (decentral) | 80.4 [78.1, 82.6] | 93.8 [93.0, 94.6] | -3.3 [-3.8, -2.8] | 1.47 [1.45, 1.48] | 28.02 [27.66, 28.40] |
+| 500 | 50 | cbba | 63.8 [61.7, 66.0] | 86.9 [85.8, 88.0] | -10.3 [-11.1, -9.4] | 2.01 [1.98, 2.04] | 55.22 [53.48, 57.05] |
+| 500 | 50 | gnn (decentral) | 66.2 [64.1, 68.2] | 87.7 [86.7, 88.8] | -9.5 [-10.2, -8.7] | 1.95 [1.92, 1.98] | 31.35 [30.80, 31.93] |
+| 500 | 70 | cbba | 46.9 [45.5, 48.3] | 75.7 [74.5, 76.9] | -21.5 [-22.5, -20.5] | 2.93 [2.88, 2.98] | 23.12 [22.49, 23.78] |
+| 500 | 70 | gnn (decentral) | 48.9 [47.4, 50.4] | 76.8 [75.6, 78.1] | -20.3 [-21.4, -19.3] | 2.81 [2.77, 2.86] | 33.23 [32.69, 33.79] |
+
+`suite_scale_n*_v1`, 50 scenarios per size, same scenarios and the same dark spells (mean 20 ticks) for cbba and the gnn. a dark node hears nobody and nobody hears it, it still fires on its own pick. cbba: 10 rounds of auction + consensus per tick. gnn: every node decodes its own local graph (threshold 0, floor 0.35) and fires only its own pick. gnn `20261029-213442-train`, trained on suite_train_v1 by `scripts/train.py` at `8bb2ef4`. latency = wall time per decision tick for all nodes together on one cpu thread. 95% bootstrap cis, Δ paired per scenario. made by `scripts/decentral.py` at `61dc2cb`.
+<!-- /decentral -->
+
+<!-- decentral_pairs -->
+| threats | nodes dark % | Δ value, gnn - cbba | Δ threats stopped, gnn - cbba |
+|---|---|---|---|
+| 100 | 0 | -0.3 [-0.7, 0.1] | -0.0 [-0.6, 0.5] |
+| 100 | 10 | -0.2 [-0.8, 0.4] | 0.6 [-0.0, 1.3] |
+| 100 | 30 | 0.3 [-0.2, 0.8] | 0.7 [-0.1, 1.5] |
+| 100 | 50 | 1.0 [0.5, 1.5] | 2.0 [1.0, 3.0] |
+| 100 | 70 | 0.7 [0.1, 1.3] | 1.6 [0.6, 2.6] |
+| 500 | 0 | 0.6 [0.3, 0.9] | 2.8 [2.1, 3.5] |
+| 500 | 10 | 0.7 [0.4, 0.9] | 2.6 [2.0, 3.2] |
+| 500 | 30 | 0.6 [0.4, 0.9] | 2.1 [1.6, 2.7] |
+| 500 | 50 | 0.8 [0.5, 1.2] | 2.3 [1.8, 2.9] |
+| 500 | 70 | 1.2 [0.7, 1.7] | 2.0 [1.5, 2.6] |
+
+positive = the decentral gnn did better. paired per scenario (same scenario, same dark spells), 95% bootstrap cis. from the per-scenario rows of `20261118-010708-decentral` (`scripts/decentral.py` at `61dc2cb`), made by `scripts/decentral_pairs.py`.
+<!-- /decentral_pairs -->
 
 </details>
 

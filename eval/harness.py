@@ -37,7 +37,25 @@ def resolve(method: str):
     "gnn-capped@0.3/0.4:<path>" also overrides capped decode's survival floor (default 0.1).
     "cbba@0.3/10" = cbba w 30% of messages lost and 10 rounds of talking per tick.
     "cbba-burst@0.3/5" = cbba over bursty links, down 30% of ticks in spells of ~5 ticks.
-    "cbba-node@0.3/5" = same but whole effectors go dark 30% of ticks, ~5 ticks at a time."""
+    "cbba-node@0.3/5" = same but whole effectors go dark 30% of ticks, ~5 ticks at a time.
+    "dgnn:<path>" = the gnn decentralized (learned/decentral.py), full comms. "dgnn@0.3/10:<path>",
+    "dgnn-burst@0.3/5:<path>", "dgnn-node@0.3/5:<path>" = same comms models as the cbba ones.
+    every dgnn node decodes w threshold 0 + survival floor 0.35, the settings phase 3 locked in."""
+    if method.startswith(("dgnn:", "dgnn@", "dgnn-burst@", "dgnn-node@")):
+        from learned.decentral import DecentralGNN
+        from sim.comms import Channel
+
+        head, path = method.split(":", 1)
+        kind, _, spec = head.partition("@")
+        a, _, b = spec.partition("/")
+        if kind == "dgnn" and not spec:
+            channel = Channel("full")
+        elif kind == "dgnn":
+            channel = Channel("iid", float(a), rounds=int(b) if b else 10)
+        else:
+            ch_kind = "node" if kind == "dgnn-node" else "link"
+            channel = Channel(ch_kind, float(a), float(b) if b else 5.0)
+        return DecentralGNN(resolve(f"gnn-capped@0/0.35:{path}"), channel)
     if method.startswith(("cbba-burst@", "cbba-node@")):
         loss, _, burst = method.split("@", 1)[1].partition("/")
         kind = "node" if method.startswith("cbba-node@") else "link"
