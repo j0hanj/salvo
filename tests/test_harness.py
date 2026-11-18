@@ -107,3 +107,21 @@ def test_node_outage_lossless_case():
     keys = ["stopped", "leaked", "shots", "cost"]
     a, b = run_one(suite, 0, "cbba-node@0/5"), run_one(suite, 0, "cbba")
     assert [a[k] for k in keys] == [b[k] for k in keys]
+
+
+def test_dgnn_full_comms_matches_centralized_gnn(tmp_path):
+    import torch
+
+    from learned.model import EdgeScorer
+
+    torch.manual_seed(0)
+    path = tmp_path / "m.pt"
+    model = EdgeScorer(hidden=8, rounds=1)
+    torch.save({"state_dict": model.state_dict(), "config": {"hidden": 8, "rounds": 1}}, path)
+    suite = load_suite("suite_small_v2")
+    keys = ["stopped", "leaked", "shots", "cost"]
+    a, b = run_one(suite, 0, f"dgnn:{path}"), run_one(suite, 0, f"gnn-capped@0/0.35:{path}")
+    assert [a[k] for k in keys] == [b[k] for k in keys]
+    # lossy variants run + reseed per scenario like the cbba ones
+    for m in [f"dgnn@0.5/3:{path}", f"dgnn-burst@0.5/5:{path}", f"dgnn-node@0.5/5:{path}"]:
+        assert [run_one(suite, 1, m)[k] for k in keys] == [run_one(suite, 1, m)[k] for k in keys]
