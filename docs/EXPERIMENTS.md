@@ -219,3 +219,24 @@ next: node outages are the regime where cbba degrades smoothly and a lot, so tha
 decentralized gnn gets compared. needs: each effector builds its graph from what it can see /
 hear, decodes alone, and a dark node falls back to its own view. spatially correlated jamming
 (a jammer w a radius knocking out several nearby nodes together) is still untested.
+
+## 2026-11-18: decentralized gnn vs cbba under node outages
+ran: `scripts/decentral.py --model results/20261029-213442-train/model.pt` at `61dc2cb` (run
+`results/20261118-010708-decentral`), then `scripts/decentral_pairs.py` on that run's csv.
+decentral gnn (`learned/decentral.py`: each node decodes a graph of every threat + the effectors
+it heard, threshold 0, floor 0.35, fires only its own pick) vs cbba (10 rounds), both over
+NodeOutage w mean 20-tick dark spells at 0 / 10 / 30 / 50 / 70% dark, same seeds so the same
+spells. suite_scale_n100_v1 and suite_scale_n500_v1, 50 scenarios each. tables + figure in the
+readme, `docs/tables/decentral.md`, `docs/tables/decentral_pairs.md`.
+result: paired Δ value, gnn - cbba. 100 threats: -0.3 [-0.7, 0.1] at 0%, -0.2 [-0.8, 0.4] at 10%,
+0.3 [-0.2, 0.8] at 30%, 1.0 [0.5, 1.5] at 50%, 0.7 [0.1, 1.3] at 70%. 500 threats: 0.6 [0.3, 0.9],
+0.7 [0.4, 0.9], 0.6 [0.4, 0.9], 0.8 [0.5, 1.2], 1.2 [0.7, 1.7]. paired Δ threats stopped at 500:
+2.0 to 2.8, all cis above 0. vs hungarian at 500: gnn 0.0 [-0.2, 0.3] at 0% dark, -20.3 [-21.4,
+-19.3] at 70%; cbba -0.5 [-0.8, -0.3] at 0%, -21.5 [-22.5, -20.5] at 70%. shooters per targeted
+threat at 70% / 500: gnn 2.81, cbba 2.93. latency per decision tick at 500, 0% dark: cbba 198 ms,
+gnn (all nodes, one thread) 23.6 ms.
+conclusion:
+next: both methods lose almost everything to the same thing, dark nodes firing blind and doubling
+up. the gnn's edge is ~1 pt. ideas that go after the actual failure: a dark node could hold fire
+on threats it last saw claimed (stale claims instead of nothing), or train the gnn on local views
+w dropouts so it learns what a partial graph means. also still untested: spatial jamming.
